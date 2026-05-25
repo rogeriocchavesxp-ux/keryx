@@ -10,7 +10,7 @@ export interface SectionDef {
   title: string
   shortTitle: string
   module: 'inventio' | 'dispositio' | 'elocutio' | 'memoria' | 'pronuntiatio'
-  group: 'contextual' | 'textual' | 'teologico'
+  group: 'contextual' | 'textual' | 'teologico' | 'proposicao' | 'estrutura' | 'encerramento'
   groupLabel: string
   order: number
   objective: string
@@ -589,12 +589,275 @@ export const WORKSPACE_SECTIONS: SectionDef[] = [
   },
 ]
 
+// ── DISPOSITIO ─────────────────────────────────────────────────────────────
+
+const DISPOSITIO_SECTIONS: SectionDef[] = [
+  {
+    slug: 'grande_ideia_homiletica',
+    title: '1. Grande Ideia Homilética',
+    shortTitle: 'Grande Ideia',
+    module: 'dispositio',
+    group: 'proposicao',
+    groupLabel: 'Ideia e Proposição',
+    order: 14,
+    objective: 'Transformar a Grande Ideia exegética em uma Grande Ideia homilética — uma sentença que comunica a verdade do texto com poder proclamatório. É o coração do sermão: tudo deve girar em torno dela.',
+    keyQuestions: [
+      'Qual é o sujeito do sermão — de que ele trata?',
+      'Qual é o complemento — o que o sermão afirma sobre esse sujeito?',
+      'A Grande Ideia está formulada de modo que mude vidas, não apenas informe mentes?',
+      'Como ela se conecta com a Grande Ideia exegética do §4?',
+      'Esta ideia é suficientemente específica para guiar todos os pontos do sermão?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'Bryan Chapell', 'Sidney Greidanus', 'Timothy Keller'],
+    cards: [
+      {
+        id: 'sujeito_homilet',
+        title: 'Sujeito do sermão',
+        placeholder: 'De que trata este sermão? O sujeito deve ser completo o suficiente para não poder ser respondido com "sim" ou "não".\n\nSujeito:',
+        aiTrigger: 'Com base na Grande Ideia exegética do §4, formule o sujeito do sermão: de que ele trata? O sujeito deve ser completo mas não ser uma frase afirmativa.',
+      },
+      {
+        id: 'complemento_homilet',
+        title: 'Complemento do sermão',
+        placeholder: 'O que o sermão afirma sobre o sujeito? O complemento deve responder completamente ao sujeito.\n\nComplemento:',
+        aiTrigger: 'Com base no sujeito do sermão, formule o complemento: o que o sermão afirma sobre esse sujeito? Deve ser uma resposta completa e proclamatória.',
+      },
+      {
+        id: 'grande_ideia_homilet',
+        title: 'Grande Ideia Homilética',
+        placeholder: 'Una sujeito e complemento em uma única sentença completa, clara e memorável. Deve ser a sentença mais importante do sermão.\n\nGrande Ideia:',
+        aiTrigger: 'Formule a Grande Ideia Homilética completa unindo sujeito e complemento. Deve ser uma sentença única, clara, bíblica e que mobilize vidas. Use linguagem direta e contemporânea.',
+      },
+      {
+        id: 'proposicao',
+        title: 'Proposição do sermão',
+        placeholder: 'Reformule a Grande Ideia como uma afirmação que anuncia o que o sermão vai desenvolver. Pode ser declarativa, interrogativa ou imperativa.\n\nProposição:',
+        aiTrigger: 'Formule a proposição do sermão — a afirmação central que anuncia ao ouvinte o que será desenvolvido. Pode ter forma declarativa ("Este texto nos ensina que..."), interrogativa ou imperativa.',
+      },
+    ],
+  },
+  {
+    slug: 'introducao_sermao',
+    title: '2. Introdução',
+    shortTitle: 'Introdução',
+    module: 'dispositio',
+    group: 'estrutura',
+    groupLabel: 'Estrutura do Sermão',
+    order: 15,
+    objective: 'Construir uma introdução que capture a atenção, crie a necessidade do ouvinte, apresente o assunto e conduza ao texto. Uma boa introdução abre a porta para o sermão — o ouvinte deve querer entrar.',
+    keyQuestions: [
+      'Como capturar a atenção nos primeiros 60 segundos?',
+      'Qual a necessidade real que este texto atende na vida do ouvinte?',
+      'Como fazer a ponte da introdução para o texto bíblico?',
+      'A introdução termina gerando expectativa para o que vem a seguir?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'Bryan Chapell', 'John Stott', 'Stuart Briscoe'],
+    cards: [
+      {
+        id: 'gancho',
+        title: 'Gancho (abertura)',
+        placeholder: 'Como o sermão começa? Uma história, pergunta, estatística, citação, situação ou problema que capture imediatamente a atenção do ouvinte.\n\nGancho:',
+        aiTrigger: 'Sugira um gancho de abertura para o sermão baseado nesta perícope. Pode ser uma história ilustrativa, pergunta provocativa, situação contemporânea ou tensão existencial. Deve ser relevante para o tema do texto.',
+      },
+      {
+        id: 'necessidade',
+        title: 'Necessidade do ouvinte',
+        placeholder: 'Qual é a necessidade concreta que este sermão atende? O ouvinte deve sentir que este sermão é para ele.\n\nNecessidade:',
+        aiTrigger: 'Identifique a necessidade humana concreta que este texto e sermão atendem. Que problema, dor, dúvida ou questão existencial este texto responde na vida do ouvinte contemporâneo?',
+      },
+      {
+        id: 'assunto_intro',
+        title: 'Apresentação do assunto',
+        placeholder: 'Como o assunto do sermão é apresentado antes do texto? Faça a ponte entre o gancho e o texto bíblico.\n\nApresentação:',
+        aiTrigger: 'Redija a transição da introdução para o texto bíblico: como apresentar o assunto do sermão e conduzir o ouvinte para a leitura do texto de modo natural e convincente?',
+      },
+      {
+        id: 'leitura_texto',
+        title: 'Leitura e apresentação do texto',
+        placeholder: 'Como o texto bíblico é apresentado e lido? Inclua qualquer contextualização necessária antes da leitura.\n\nApresentação do texto:',
+        aiTrigger: 'Como apresentar e introduzir a leitura desta perícope para a congregação? Que informações contextuais mínimas o ouvinte precisa antes de ouvir o texto ser lido?',
+      },
+    ],
+  },
+  {
+    slug: 'divisoes_sermao',
+    title: '3. Divisões do Sermão',
+    shortTitle: 'Divisões',
+    module: 'dispositio',
+    group: 'estrutura',
+    groupLabel: 'Estrutura do Sermão',
+    order: 16,
+    objective: 'Desenvolver os pontos principais do sermão — divisões que fluem do texto, sustentam a Grande Ideia e juntas constroem o argumento completo. Cada ponto deve ser necessário, distinto e derivado do próprio texto.',
+    keyQuestions: [
+      'Quantos pontos o texto sustenta naturalmente?',
+      'Cada ponto está claramente ancorado no texto?',
+      'Os pontos juntos desenvolvem completamente a Grande Ideia?',
+      'Há progressão lógica ou narrativa entre os pontos?',
+      'Cada ponto inclui explicação, ilustração e aplicação?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'Bryan Chapell', 'Martyn Lloyd-Jones', 'John MacArthur'],
+    cards: [
+      {
+        id: 'ponto1',
+        title: 'Ponto 1',
+        placeholder: 'Enunciado do ponto 1:\n\nReferência no texto:\n\nDesenvolvimento (explicação):\n\nIlustração:\n\nAplicação:',
+        aiTrigger: 'Desenvolva o primeiro ponto principal do sermão baseado nesta perícope. Inclua: enunciado claro do ponto, ancoragem no texto, desenvolvimento explicativo, sugestão de ilustração e aplicação prática.',
+      },
+      {
+        id: 'ponto2',
+        title: 'Ponto 2',
+        placeholder: 'Enunciado do ponto 2:\n\nReferência no texto:\n\nDesenvolvimento (explicação):\n\nIlustração:\n\nAplicação:',
+        aiTrigger: 'Desenvolva o segundo ponto principal do sermão baseado nesta perícope. Inclua: enunciado claro, ancoragem textual, desenvolvimento, ilustração e aplicação. Deve contrastar ou progredir em relação ao ponto 1.',
+      },
+      {
+        id: 'ponto3',
+        title: 'Ponto 3 (se houver)',
+        placeholder: 'Enunciado do ponto 3:\n\nReferência no texto:\n\nDesenvolvimento (explicação):\n\nIlustração:\n\nAplicação:',
+        aiTrigger: 'Desenvolva o terceiro ponto do sermão, se o texto o sustentar. Inclua enunciado, ancoragem textual, desenvolvimento, ilustração e aplicação. Se o texto não sustentar três pontos, indique isso claramente.',
+      },
+      {
+        id: 'avaliacao_estrutura',
+        title: 'Avaliação da estrutura',
+        placeholder: 'Os pontos são paralelos em forma? São derivados do texto? Juntos desenvolvem a Grande Ideia? Há equilíbrio de desenvolvimento?\n\nAvaliação:',
+        aiTrigger: 'Avalie a estrutura do sermão: os pontos são paralelos em forma gramatical? São todos derivados do texto? Desenvolvem completamente a Grande Ideia? Há equilíbrio de desenvolvimento entre eles? Sugira ajustes se necessário.',
+      },
+    ],
+  },
+  {
+    slug: 'transicoes',
+    title: '4. Transições',
+    shortTitle: 'Transições',
+    module: 'dispositio',
+    group: 'estrutura',
+    groupLabel: 'Estrutura do Sermão',
+    order: 17,
+    objective: 'Redigir as transições entre os pontos do sermão. Boas transições são invisíveis — o ouvinte flui de um ponto para o outro sem perceber a "costura", mas a coerência do argumento fica clara.',
+    keyQuestions: [
+      'A transição resume o ponto anterior?',
+      'A transição anuncia o próximo ponto de modo natural?',
+      'O ouvinte entende a lógica que conecta os dois pontos?',
+      'A transição reforça a Grande Ideia central?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'Bryan Chapell', 'Dennis Cahill'],
+    cards: [
+      {
+        id: 'transicao_intro_p1',
+        title: 'Introdução → Ponto 1',
+        placeholder: 'Redija a transição da introdução para o primeiro ponto do sermão.\n\nTransição:',
+        aiTrigger: 'Redija a transição da introdução para o primeiro ponto do sermão. Deve resumir o que foi estabelecido na introdução e anunciar naturalmente o primeiro ponto.',
+      },
+      {
+        id: 'transicao_1_2',
+        title: 'Ponto 1 → Ponto 2',
+        placeholder: 'Redija a transição do primeiro para o segundo ponto. Resuma o ponto 1 e anuncia o ponto 2.\n\nTransição:',
+        aiTrigger: 'Redija a transição do primeiro para o segundo ponto do sermão. Deve resumir a contribuição do ponto 1 e conduzir naturalmente para o ponto 2, reforçando a coerência do argumento.',
+      },
+      {
+        id: 'transicao_2_3',
+        title: 'Ponto 2 → Ponto 3 (se houver)',
+        placeholder: 'Redija a transição do segundo para o terceiro ponto, se houver.\n\nTransição:',
+        aiTrigger: 'Redija a transição do segundo para o terceiro ponto do sermão, se houver. Deve resumir o ponto 2 e conduzir para o terceiro com naturalidade.',
+      },
+    ],
+  },
+  {
+    slug: 'aplicacao',
+    title: '5. Aplicação',
+    shortTitle: 'Aplicação',
+    module: 'dispositio',
+    group: 'encerramento',
+    groupLabel: 'Aplicação e Conclusão',
+    order: 18,
+    objective: 'Desenvolver a aplicação do sermão — como a verdade do texto transforma concretamente a vida do ouvinte. A aplicação não é um acréscimo ao sermão: é o destino de toda a pregação expositiva.',
+    keyQuestions: [
+      'O que o ouvinte deve crer diferentemente depois deste sermão?',
+      'O que o ouvinte deve fazer diferentemente?',
+      'Como Cristo é o fundamento e o motivador desta aplicação?',
+      'A aplicação é específica o suficiente para ser obedecida?',
+      'Há aplicações para diferentes situações de vida na congregação?',
+    ],
+    relevantAuthors: ['Bryan Chapell', 'Timothy Keller', 'John Stott', 'Sinclair Ferguson'],
+    cards: [
+      {
+        id: 'aplicacao_crenca',
+        title: 'O que crer',
+        placeholder: 'Que verdade doutrinária ou teológica o ouvinte deve abraçar, aprofundar ou corrigir a partir deste texto?\n\nO que crer:',
+        aiTrigger: 'Que verdade doutrinária ou teológica este texto exige que o ouvinte creia, aprofunde ou corrija? Formule a aplicação cognitiva do sermão — o que deve mudar na mente e no coração.',
+      },
+      {
+        id: 'aplicacao_pratica',
+        title: 'O que fazer',
+        placeholder: 'Que atitude, hábito, decisão ou comportamento concreto este texto exige do ouvinte?\n\nO que fazer:',
+        aiTrigger: 'Que atitude, decisão, hábito ou comportamento concreto este texto exige do ouvinte? A aplicação prática deve ser específica, alcançável e diretamente derivada do texto.',
+      },
+      {
+        id: 'aplicacao_cristologica',
+        title: 'Cristo como centro e motivação',
+        placeholder: 'Como Cristo é o fundamento, o modelo e a motivação desta aplicação? Sem o evangelho, a aplicação vira moralismo.\n\nCristo na aplicação:',
+        aiTrigger: 'Como Cristo é o fundamento e a motivação desta aplicação? Mostre como o evangelho — a obra de Cristo — é o que torna esta obediência possível e sustentável, não moralismo.',
+      },
+      {
+        id: 'ilustracoes',
+        title: 'Ilustrações',
+        placeholder: 'Que histórias, exemplos, analogias ou situações da vida real ilustram os pontos e a aplicação do sermão?\n\nIlustrações:',
+        aiTrigger: 'Sugira ilustrações para os pontos e a aplicação deste sermão. Podem ser histórias da vida real, analogias, exemplos históricos ou situações contemporâneas que tornem a verdade do texto concreta e memorável.',
+      },
+    ],
+  },
+  {
+    slug: 'conclusao_sermao',
+    title: '6. Conclusão',
+    shortTitle: 'Conclusão',
+    module: 'dispositio',
+    group: 'encerramento',
+    groupLabel: 'Aplicação e Conclusão',
+    order: 19,
+    objective: 'Construir uma conclusão que sintetize o sermão, reforce a Grande Ideia e convoque o ouvinte à resposta. A conclusão não introduz ideias novas — ela conduz o ouvinte a agir sobre o que foi pregado.',
+    keyQuestions: [
+      'A conclusão resume o argumento completo do sermão?',
+      'A Grande Ideia é reafirmada com força?',
+      'Há um apelo claro e específico à resposta?',
+      'A conclusão termina com Cristo e o evangelho?',
+      'O ouvinte sabe exatamente o que fazer ao sair?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'Bryan Chapell', 'Martyn Lloyd-Jones', 'Charles Spurgeon'],
+    cards: [
+      {
+        id: 'sintese_final',
+        title: 'Síntese do sermão',
+        placeholder: 'Resuma em 3-5 frases o argumento completo do sermão. Esta síntese deve reafirmar a Grande Ideia e os pontos principais.\n\nSíntese:',
+        aiTrigger: 'Redija a síntese final do sermão em 3-5 frases que resumam o argumento completo, reafirmem a Grande Ideia e os pontos principais de modo coeso e memorável.',
+      },
+      {
+        id: 'apelo',
+        title: 'Apelo à resposta',
+        placeholder: 'Qual é o apelo final? O que você está pedindo ao ouvinte que faça, creia ou decida agora?\n\nApelo:',
+        aiTrigger: 'Redija o apelo final do sermão — o chamado concreto à resposta. Deve ser claro, específico e fundamentado no evangelho, não na culpa ou no esforço humano.',
+      },
+      {
+        id: 'encerramento',
+        title: 'Frase de encerramento',
+        placeholder: 'A última frase do sermão. Deve ser memorável, cristocêntrica e deixar o ouvinte com a Grande Ideia gravada.\n\nEncerramento:',
+        aiTrigger: 'Redija a frase final do sermão — a última coisa que o ouvinte ouvirá. Deve ser memorável, centrada em Cristo e deixar a Grande Ideia gravada na memória.',
+      },
+    ],
+  },
+]
+
+WORKSPACE_SECTIONS.push(...DISPOSITIO_SECTIONS)
+
 // ── GRUPOS ─────────────────────────────────────────────────────────────────
 
 export const INVENTIO_GROUPS = [
   { id: 'contextual', label: 'Estudo Contextual' },
   { id: 'textual', label: 'Estudo Textual' },
   { id: 'teologico', label: 'Estudo Teológico' },
+] as const
+
+export const DISPOSITIO_GROUPS = [
+  { id: 'proposicao', label: 'Ideia e Proposição' },
+  { id: 'estrutura', label: 'Estrutura do Sermão' },
+  { id: 'encerramento', label: 'Aplicação e Conclusão' },
 ] as const
 
 // ── HELPERS ────────────────────────────────────────────────────────────────

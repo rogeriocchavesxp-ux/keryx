@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import type { Project, Section } from '@/types/database'
 import type { SectionDef } from '@/lib/workspace-sections'
 
+type CardState = 'idle' | 'generating' | 'saving' | 'saved'
+
 interface Props {
   sectionDef: SectionDef
   project: Project
@@ -49,6 +51,8 @@ export default function SectionWorkspace({
   const [orientationOpen, setOrientationOpen] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [cardStates, setCardStates] = useState<Record<string, CardState>>({})
+  const [generatingAll, setGeneratingAll] = useState(false)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestContent = useRef(cardContent)
@@ -121,17 +125,85 @@ export default function SectionWorkspace({
     })
   }
 
-  function sendAllToAI() {
-    const parts: string[] = [
-      `Gere a seção "${sectionDef.title}" para ${project.book} ${project.passage_ref} (${project.original_language}).`,
-      '',
-    ]
-    sectionDef.cards.forEach(card => {
-      const val = cardContent[card.id]?.trim()
-      if (val) parts.push(`${card.title}:\n${val}`)
-    })
-    parts.push('\nIntegre todas as informações acima em uma análise exegética coerente e aprofundada.')
-    onAskAI(parts.join('\n'))
+  async function generateCard(cardId: string) {
+    setCardStates(prev => ({ ...prev, [cardId]: 'generating' }))
+    setExpandedCards(prev => new Set([...prev, cardId]))
+
+    try {
+      const res = await fetch('/api/claude/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sectionSlug: sectionDef.slug,
+          cardId,
+          project: {
+            book: project.book,
+            passage_ref: project.passage_ref,
+            testament: project.testament,
+            original_language: project.original_language,
+          },
+        }),
+      })
+      const data = await res.json()
+      const generated = data[cardId] ?? ''
+      if (!generated) throw new Error('empty')
+
+      const next = { ...latestContent.current, [cardId]: generated }
+      setCardContent(next)
+      latestContent.current = next
+
+      setCardStates(prev => ({ ...prev, [cardId]: 'saving' }))
+      await performSave(next)
+      setCardStates(prev => ({ ...prev, [cardId]: 'saved' }))
+      setTimeout(() => setCardStates(prev => ({ ...prev, [cardId]: 'idle' })), 2000)
+    } catch {
+      setCardStates(prev => ({ ...prev, [cardId]: 'idle' }))
+    }
+  }
+
+  async function generateAll() {
+    setGeneratingAll(true)
+    const allGenerating: Record<string, CardState> = {}
+    sectionDef.cards.forEach(c => { allGenerating[c.id] = 'generating' })
+    setCardStates(allGenerating)
+    setExpandedCards(new Set(sectionDef.cards.map(c => c.id)))
+
+    try {
+      const res = await fetch('/api/claude/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sectionSlug: sectionDef.slug,
+          project: {
+            book: project.book,
+            passage_ref: project.passage_ref,
+            testament: project.testament,
+            original_language: project.original_language,
+          },
+        }),
+      })
+      const data = await res.json()
+
+      const next = { ...latestContent.current }
+      sectionDef.cards.forEach(c => { if (data[c.id]) next[c.id] = data[c.id] })
+      setCardContent(next)
+      latestContent.current = next
+
+      const allSaving: Record<string, CardState> = {}
+      sectionDef.cards.forEach(c => { allSaving[c.id] = 'saving' })
+      setCardStates(allSaving)
+
+      await performSave(next)
+
+      const allSaved: Record<string, CardState> = {}
+      sectionDef.cards.forEach(c => { allSaved[c.id] = 'saved' })
+      setCardStates(allSaved)
+      setTimeout(() => setCardStates({}), 2500)
+    } catch {
+      setCardStates({})
+    } finally {
+      setGeneratingAll(false)
+    }
   }
 
   const savedLabel = saving
@@ -333,25 +405,35 @@ export default function SectionWorkspace({
                   </span>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto', flexShrink: 0 }}>
-                  <button
-                    onClick={e => { e.stopPropagation(); onAskAI(card.aiTrigger) }}
-                    style={{
-                      background: 'var(--ai-subtle)',
-                      border: '1px solid transparent',
-                      borderRadius: '4px',
-                      padding: '0.15rem 0.5rem',
-                      fontSize: '0.72rem',
-                      color: 'var(--ai)',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      fontWeight: '600',
-                      letterSpacing: '0.04em',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--ai)')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'transparent')}
-                  >
-                    IA
-                  </button>
+                  {(() => {
+                    const state = cardStates[card.id] ?? 'idle'
+                    const isWorking = state === 'generating' || state === 'saving'
+                    const label = state === 'generating' ? 'Gerando...' : state === 'saving' ? 'Salvando...' : state === 'saved' ? 'Salvo ✓' : 'Gerar com IA'
+                    return (
+                      <button
+                        onClick={e => { e.stopPropagation(); if (!isWorking) generateCard(card.id) }}
+                        disabled={isWorking || generatingAll}
+                        style={{
+                          background: state === 'saved' ? 'rgba(109,184,160,0.12)' : 'var(--ai-subtle)',
+                          border: `1px solid ${state === 'saved' ? 'var(--success)' : 'transparent'}`,
+                          borderRadius: '4px',
+                          padding: '0.15rem 0.55rem',
+                          fontSize: '0.72rem',
+                          color: state === 'saved' ? 'var(--success)' : isWorking ? 'var(--text-muted)' : 'var(--ai)',
+                          cursor: isWorking || generatingAll ? 'wait' : 'pointer',
+                          fontFamily: 'inherit',
+                          fontWeight: '600',
+                          letterSpacing: '0.02em',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={e => { if (!isWorking) e.currentTarget.style.borderColor = 'var(--ai)' }}
+                        onMouseLeave={e => { if (state !== 'saved') e.currentTarget.style.borderColor = 'transparent' }}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })()}
                   <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginLeft: '0.2rem' }}>
                     {expanded ? '▲' : '▼'}
                   </span>
@@ -407,20 +489,22 @@ export default function SectionWorkspace({
         borderTop: '1px solid var(--border-subtle)',
       }}>
         <button
-          onClick={sendAllToAI}
+          onClick={generateAll}
+          disabled={generatingAll}
           style={{
-            background: 'var(--ai-subtle)',
-            border: '1px solid var(--ai)',
-            color: 'var(--ai)',
+            background: generatingAll ? 'var(--surface-2)' : 'var(--ai-subtle)',
+            border: `1px solid ${generatingAll ? 'var(--border)' : 'var(--ai)'}`,
+            color: generatingAll ? 'var(--text-muted)' : 'var(--ai)',
             borderRadius: '7px',
             padding: '0.5rem 1rem',
             fontSize: '0.82rem',
-            cursor: 'pointer',
+            cursor: generatingAll ? 'wait' : 'pointer',
             fontFamily: 'inherit',
             fontWeight: '600',
+            transition: 'all 0.2s',
           }}
         >
-          Gerar seção completa com IA
+          {generatingAll ? 'Gerando todos os campos...' : 'Gerar seção completa com IA'}
         </button>
         {hasAnyContent && (
           <button

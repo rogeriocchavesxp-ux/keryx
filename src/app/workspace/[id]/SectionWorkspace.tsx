@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Project, Section } from '@/types/database'
 import type { SectionDef } from '@/lib/workspace-sections'
+import HelpIcon from '@/components/help/HelpIcon'
 
 type CardState = 'idle' | 'generating' | 'saving' | 'saved'
 
@@ -36,7 +37,7 @@ export default function SectionWorkspace({
   onUpdate,
   onAskAI,
 }: Props) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const loadCards = useCallback((): Record<string, string> => {
     const stored = existingSection?.content as Record<string, unknown> | null
@@ -391,6 +392,7 @@ export default function SectionWorkspace({
                 }}>
                   {card.title}
                 </span>
+                <HelpIcon cardId={card.id} onAskAI={onAskAI} />
                 {preview && (
                   <span style={{
                     fontSize: '0.78rem',

@@ -52,6 +52,7 @@ export default function SectionWorkspace({
 
   const [cardContent, setCardContent] = useState<Record<string, string>>(loadCards)
   const [expandedCards, setExpandedCards] = useState<Set<string>>(() => new Set([sectionDef.cards[0]?.id]))
+  const [questionsOpen, setQuestionsOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [cardStates, setCardStates] = useState<Record<string, CardState>>({})
@@ -227,50 +228,80 @@ export default function SectionWorkspace({
         {sectionDef.objective}
       </p>
 
-      {/* Key questions */}
-      <div style={{ marginBottom: '0.6rem' }}>
-        <div style={{
-          fontSize: '0.62rem', fontWeight: '800',
-          letterSpacing: '0.1em', color: 'var(--text-muted)',
-          textTransform: 'uppercase', marginBottom: '0.55rem',
-        }}>
-          Perguntas centrais
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-          {sectionDef.keyQuestions.map((q, i) => (
-            <button
-              key={i}
-              onClick={() => onAskAI(q)}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '4px',
-                padding: '0.28rem 0.6rem',
-                fontSize: '0.76rem',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer', fontFamily: 'inherit',
-                lineHeight: '1.35', textAlign: 'left',
-                transition: 'border-color 0.15s, color 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = moduleColor; e.currentTarget.style.color = 'var(--text-primary)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Authors */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '2rem', paddingLeft: '0.1rem' }}>
-        {sectionDef.relevantAuthors.map(author => (
-          <span key={author} style={{
-            fontSize: '0.72rem', color: 'var(--text-muted)',
-            fontStyle: 'italic',
+      {/* Key questions — collapsible hermeneutic callout */}
+      <div style={{ marginBottom: '2rem' }}>
+        <button
+          onClick={() => setQuestionsOpen(o => !o)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontFamily: 'inherit', padding: 0,
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+          }}
+        >
+          <span style={{
+            fontSize: '0.52rem',
+            color: 'var(--text-muted)',
+            opacity: 0.55,
+            transition: 'opacity 0.15s',
           }}>
-            {author}
+            {questionsOpen ? '▾' : '▸'}
           </span>
-        ))}
+          <span style={{
+            fontSize: '0.67rem', fontWeight: '600',
+            letterSpacing: '0.07em', textTransform: 'uppercase',
+            color: 'var(--text-muted)',
+          }}>
+            Perguntas Centrais
+          </span>
+          {!questionsOpen && (
+            <span style={{
+              fontSize: '0.67rem', color: 'var(--text-muted)',
+              fontStyle: 'italic', opacity: 0.5,
+            }}>
+              — {sectionDef.keyQuestions.length} orientações
+            </span>
+          )}
+        </button>
+
+        {questionsOpen && (
+          <div style={{
+            marginTop: '0.7rem',
+            paddingLeft: '0.85rem',
+            borderLeft: `1px solid ${moduleColor}35`,
+          }}>
+            {sectionDef.keyQuestions.map((q, i) => (
+              <button
+                key={i}
+                onClick={() => onAskAI(q)}
+                style={{
+                  display: 'block', width: '100%',
+                  background: 'none', border: 'none',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  textAlign: 'left', padding: '0.2rem 0',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.81rem', fontStyle: 'italic',
+                  lineHeight: '1.6', transition: 'color 0.12s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}
+              >
+                · {q}
+              </button>
+            ))}
+
+            {sectionDef.relevantAuthors.length > 0 && (
+              <div style={{
+                marginTop: '0.6rem',
+                paddingTop: '0.45rem',
+                borderTop: '1px solid var(--border-subtle)',
+                fontSize: '0.69rem', color: 'var(--text-muted)',
+                fontStyle: 'italic', opacity: 0.65,
+              }}>
+                {sectionDef.relevantAuthors.join(' · ')}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Fields ──────────────────────────────────────────────────────────── */}

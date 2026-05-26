@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
@@ -9,7 +9,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()

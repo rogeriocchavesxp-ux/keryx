@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -34,7 +34,7 @@ interface Props {
 
 export default function DashboardClient({ user, projects, profile }: Props) {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [showNew, setShowNew] = useState(false)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({

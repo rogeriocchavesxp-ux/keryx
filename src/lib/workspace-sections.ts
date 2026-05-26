@@ -254,6 +254,20 @@ export const WORKSPACE_SECTIONS: SectionDef[] = [
   // ── ESTUDO TEXTUAL ─────────────────────────────────────────────────────────
 
   {
+    slug: 'texto_original',
+    title: '§ Texto Original',
+    shortTitle: 'Texto Original',
+    module: 'inventio',
+    group: 'textual',
+    groupLabel: 'Estudo Textual',
+    order: 5.5,
+    objective: 'Trabalhar diretamente com o texto bíblico no idioma original — o ponto de partida de toda exegese responsável. O texto domina; a análise serve.',
+    keyQuestions: [],
+    relevantAuthors: [],
+    cards: [],
+  },
+
+  {
     slug: 'delimitacao_pericope',
     title: '2.1 Delimitação da Perícope',
     shortTitle: 'Delimitação',

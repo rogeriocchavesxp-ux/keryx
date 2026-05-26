@@ -14,6 +14,7 @@ import {
 } from '@/lib/workspace-sections'
 import SectionWorkspace from './SectionWorkspace'
 import SynthesisView from './SynthesisView'
+import OriginalTextWorkspace from './OriginalTextWorkspace'
 import AIPanel from './AIPanel'
 
 interface Props {
@@ -480,7 +481,16 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
 
           {/* Reading area */}
           <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', background: 'var(--background)' }}>
-            {activeDef ? (
+            {activeSlug === 'texto_original' ? (
+              <OriginalTextWorkspace
+                key={activeSlug}
+                project={project}
+                userId={user.id}
+                existingSection={activeSection}
+                onUpdate={handleSectionUpdate}
+                onAskAI={prompt => { setAiPrompt(prompt); setAiOpen(true) }}
+              />
+            ) : activeDef ? (
               <SectionWorkspace
                 key={activeSlug}
                 sectionDef={activeDef}

@@ -8,6 +8,9 @@ import {
   WORKSPACE_SECTIONS,
   INVENTIO_GROUPS,
   DISPOSITIO_GROUPS,
+  ELOCUTIO_GROUPS,
+  MEMORIA_GROUPS,
+  PRONUNTIATIO_GROUPS,
   getSectionsByGroup,
   getSectionBySlug,
 } from '@/lib/workspace-sections'
@@ -20,11 +23,7 @@ interface Props {
   initialSections: Section[]
 }
 
-const OTHER_MODULES = [
-  { id: 'elocutio', label: 'III · ELOCUTIO', subtitle: 'Linguagem e estilo' },
-  { id: 'memoria', label: 'IV · MEMORIA', subtitle: 'Memorização e domínio' },
-  { id: 'pronuntiatio', label: 'V · PRONUNTIATIO', subtitle: 'Entrega e comunicação' },
-]
+const OTHER_MODULES: { id: string; label: string; subtitle: string }[] = []
 
 function statusDotColor(status: 'empty' | 'draft' | 'reviewed' | undefined): string {
   if (!status || status === 'empty') return 'var(--border)'
@@ -405,19 +404,53 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
             })}
           </div>
 
-          {/* Outros módulos — bloqueados */}
-          <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.5rem', opacity: 0.3, pointerEvents: 'none' }}>
-            {OTHER_MODULES.map(mod => (
-              <div key={mod.id} style={{ padding: '0.45rem 0.85rem' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.1em', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                  {mod.label}
-                </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-                  {mod.subtitle}
-                </div>
+          {/* ELOCUTIO */}
+          {[
+            { label: 'III · ELOCUTIO', color: '#9b7ec8', bgColor: 'rgba(155,126,200,0.1)', groups: ELOCUTIO_GROUPS },
+            { label: 'IV · MEMORIA', color: '#6db8a0', bgColor: 'rgba(109,184,160,0.1)', groups: MEMORIA_GROUPS },
+            { label: 'V · PRONUNTIATIO', color: '#c47c5a', bgColor: 'rgba(196,124,90,0.1)', groups: PRONUNTIATIO_GROUPS },
+          ].map(mod => (
+            <div key={mod.label} style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.5rem' }}>
+              <div style={{ padding: '0.5rem 0.85rem 0.35rem', fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.1em', color: mod.color, textTransform: 'uppercase' }}>
+                {mod.label}
               </div>
-            ))}
-          </div>
+              {mod.groups.map(group => {
+                const groupOpen = expandedGroups.has(group.id)
+                const { done, total } = getGroupProgress(group.id)
+                const groupSections = getSectionsByGroup(group.id)
+                return (
+                  <div key={group.id}>
+                    <button
+                      onClick={() => toggleGroup(group.id)}
+                      style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.45rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}
+                    >
+                      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', flexShrink: 0 }}>{groupOpen ? '▾' : '▸'}</span>
+                      <span style={{ fontSize: '0.78rem', fontWeight: '600', color: 'var(--text-secondary)', flex: 1, textAlign: 'left' }}>{group.label}</span>
+                      <span style={{ fontSize: '0.67rem', color: done === total ? 'var(--success)' : 'var(--text-muted)', background: 'var(--surface-2)', borderRadius: '9px', padding: '0.05rem 0.4rem', flexShrink: 0 }}>
+                        {done}/{total}
+                      </span>
+                    </button>
+                    {groupOpen && groupSections.map(sd => {
+                      const sec = sections.find(s => s.slug === sd.slug)
+                      const isActive = sd.slug === activeSlug
+                      return (
+                        <button
+                          key={sd.slug}
+                          onClick={() => setActiveSlug(sd.slug)}
+                          style={{ width: '100%', background: isActive ? mod.bgColor : 'transparent', border: 'none', borderLeft: `2px solid ${isActive ? mod.color : 'transparent'}`, padding: '0.45rem 0.75rem 0.45rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                        >
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: statusDotColor(sec?.status) }} />
+                          <span style={{ fontSize: '0.79rem', color: isActive ? mod.color : 'var(--text-secondary)', lineHeight: '1.3', textAlign: 'left' }}>
+                            {sd.shortTitle}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* ── Main workspace ────────────────────────────────────────────────── */}

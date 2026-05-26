@@ -10,7 +10,12 @@ export interface SectionDef {
   title: string
   shortTitle: string
   module: 'inventio' | 'dispositio' | 'elocutio' | 'memoria' | 'pronuntiatio'
-  group: 'contextual' | 'textual' | 'teologico' | 'proposicao' | 'estrutura' | 'encerramento'
+  group:
+    | 'contextual' | 'textual' | 'teologico'
+    | 'proposicao' | 'estrutura' | 'encerramento'
+    | 'vocabulario' | 'imagens' | 'tom'
+    | 'memorizacao'
+    | 'entrega' | 'avaliacao_pregacao'
   groupLabel: string
   order: number
   objective: string
@@ -848,6 +853,339 @@ WORKSPACE_SECTIONS.push(...DISPOSITIO_SECTIONS)
 
 // ── GRUPOS ─────────────────────────────────────────────────────────────────
 
+// ── ELOCUTIO ────────────────────────────────────────────────────────────────
+
+const ELOCUTIO_SECTIONS: SectionDef[] = [
+  {
+    slug: 'vocabulario_clareza',
+    title: '1. Vocabulário e Clareza',
+    shortTitle: 'Vocabulário',
+    module: 'elocutio',
+    group: 'vocabulario',
+    groupLabel: 'Vocabulário e Clareza',
+    order: 20,
+    objective:
+      'Selecionar palavras precisas, acessíveis e concretas que comuniquem a verdade do texto sem jargão desnecessário nem imprecisão teológica. A palavra certa no lugar certo é o primeiro elemento do estilo.',
+    keyQuestions: [
+      'O vocabulário é adequado ao nível de escolaridade da congregação?',
+      'Quais termos técnicos são indispensáveis? Como explicá-los?',
+      'As frases são diretas e sem ambiguidade?',
+      'Há palavras que obscurecem em vez de iluminar?',
+      'O vocabulário é concreto (imagens, ações) ou excessivamente abstrato?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'Stuart Murray', 'Bryan Chapell', 'John Stott', 'Martyn Lloyd-Jones'],
+    cards: [
+      {
+        id: 'nivel_linguagem',
+        title: 'Nível de linguagem',
+        placeholder: 'Qual o nível de linguagem adequado para esta congregação? Descreva o perfil do auditório e ajuste o vocabulário conforme.\n\nPerfil do auditório:\n\nNível de linguagem escolhido:\n\nJustificativa:',
+        aiTrigger: 'Analise o nível de linguagem mais adequado para pregar este sermão. Considere o perfil típico de uma congregação reformada. Que vocabulário deve ser preferido? Que expressões devem ser evitadas?',
+      },
+      {
+        id: 'jargao_teologico',
+        title: 'Termos técnicos e jargão',
+        placeholder: 'Liste os termos teológicos essenciais do sermão. Para cada um, escreva como explicá-lo de modo acessível sem perder precisão.\n\nTermo → Explicação acessível:',
+        aiTrigger: 'Quais termos teológicos ou técnicos são indispensáveis neste sermão? Para cada um, proponha uma forma de explicá-lo que seja ao mesmo tempo precisa e acessível a uma congregação leiga.',
+      },
+      {
+        id: 'clareza_frases',
+        title: 'Clareza e concisão',
+        placeholder: 'Revise três a cinco frases-chave do sermão em busca de clareza. Reescreva as que estiverem longas, ambíguas ou passivas.\n\nFrases revisadas:',
+        aiTrigger: 'Sugira como tornar mais claras e concisas as sentenças centrais deste sermão. Prefira voz ativa, sujeito no início, verbos concretos e frases curtas. Evite subordinadas encadeadas e jargão desnecessário.',
+      },
+    ],
+  },
+  {
+    slug: 'figuras_linguagem',
+    title: '2. Imagens e Retórica',
+    shortTitle: 'Imagens',
+    module: 'elocutio',
+    group: 'imagens',
+    groupLabel: 'Imagens e Retórica',
+    order: 21,
+    objective:
+      'Empregar metáforas, analogias, comparações e imagens que tornem o abstrato concreto e o invisível visível. A retórica não é ornamento — é o meio pelo qual a mente do ouvinte é movida à verdade.',
+    keyQuestions: [
+      'Qual metáfora central organiza o sermão?',
+      'As analogias iluminam ou desviam a atenção do texto?',
+      'Há imagens concretas do cotidiano que ancoram os conceitos?',
+      'O ouvinte consegue "ver" o que o texto diz?',
+      'As figuras de linguagem estão em harmonia com o tom pastoral?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'Bryan Chapell', 'Eugene Lowry', 'Fred Craddock', 'Charles Spurgeon'],
+    cards: [
+      {
+        id: 'metaforas_analogias',
+        title: 'Metáforas e analogias',
+        placeholder: 'Quais metáforas ou analogias tornam a verdade central do texto concreta e memorável? Liste e avalie cada uma.\n\nMetáfora/Analogia → O que ilumina:',
+        aiTrigger: 'Proponha metáforas e analogias que tornem a verdade central desta perícope concreta e memorável para o ouvinte. As imagens devem ser do cotidiano contemporâneo, iluminando a verdade do texto sem distorcê-la.',
+      },
+      {
+        id: 'imagens_concretas',
+        title: 'Imagens do cotidiano',
+        placeholder: 'Que situações, objetos ou experiências da vida comum podem servir como janelas para a verdade do texto?\n\nImagens:',
+        aiTrigger: 'Sugira imagens concretas do cotidiano — situações, objetos, experiências comuns — que sirvam como "janelas" para a verdade desta perícope. O ouvinte deve conseguir ver a verdade, não apenas ouvi-la.',
+      },
+      {
+        id: 'recursos_retoricos',
+        title: 'Recursos retóricos',
+        placeholder: 'Identifique recursos retóricos úteis: anáfora, antítese, climax, pergunta retórica, repetição. Como cada um reforça a mensagem?\n\nRecursos:',
+        aiTrigger: 'Que recursos retóricos — anáfora, antítese, clímax, pergunta retórica, repetição enfática — potencializam a força persuasiva deste sermão? Ofereça exemplos concretos de frases que usem esses recursos.',
+      },
+    ],
+  },
+  {
+    slug: 'tom_pastoral',
+    title: '3. Tom e Voz Pastoral',
+    shortTitle: 'Tom',
+    module: 'elocutio',
+    group: 'tom',
+    groupLabel: 'Tom e Voz Pastoral',
+    order: 22,
+    objective:
+      'Calibrar o tom do sermão — profético, pastoral, exortativo, consolatório — conforme a natureza do texto e as necessidades da congregação. O tom comunica tanto quanto o conteúdo.',
+    keyQuestions: [
+      'Qual é o tom predominante do próprio texto bíblico?',
+      'O sermão deve consolar, exortar, corrigir ou celebrar?',
+      'Onde o tom deve mudar ao longo do sermão?',
+      'O tom é consistente com o caráter pastoral e a missão da igreja?',
+      'O pregador fala como alguém de dentro da situação, não de fora?',
+    ],
+    relevantAuthors: ['Martyn Lloyd-Jones', 'John Stott', 'Tim Keller', 'Bryan Chapell', 'Charles Spurgeon'],
+    cards: [
+      {
+        id: 'tom_geral',
+        title: 'Tom geral do sermão',
+        placeholder: 'Qual é o tom dominante deste sermão? Por que este tom é adequado a este texto e a esta congregação?\n\nTom:\n\nJustificativa:',
+        aiTrigger: 'Que tom — profético, pastoral, celebrativo, consolatório, exortativo — é mais adequado ao pregar esta perícope? Por que o próprio texto demanda este tom? Como sustentá-lo ao longo do sermão?',
+      },
+      {
+        id: 'variacao_tonal',
+        title: 'Variações de tom',
+        placeholder: 'Em que momentos do sermão o tom muda? Da confrontação ao consolo, da exortação à celebração. Mapeie as transições.\n\nVariações:',
+        aiTrigger: 'Mapeie as variações de tom ao longo do sermão. Onde deve haver confrontação? Onde consolação? Onde celebração? Como fazer transições tonais naturais que reflitam o próprio movimento do texto?',
+      },
+      {
+        id: 'voz_pregador',
+        title: 'Voz e autoridade pastoral',
+        placeholder: 'O pregador fala como pastor que conhece sua congregação. Como equilibrar autoridade bíblica com ternura pastoral? Como falar "de dentro" e não "de cima"?\n\nVoz pastoral:',
+        aiTrigger: 'Como o pregador deve equilibrar autoridade bíblica com ternura pastoral neste sermão? Que postura vocal e relacional deve perpassar a pregação — falar como pastor que ama sua congregação, não como juiz que a condena.',
+      },
+    ],
+  },
+]
+
+WORKSPACE_SECTIONS.push(...ELOCUTIO_SECTIONS)
+
+// ── MEMORIA ──────────────────────────────────────────────────────────────────
+
+const MEMORIA_SECTIONS: SectionDef[] = [
+  {
+    slug: 'internalizacao_estrutura',
+    title: '1. Internalização da Estrutura',
+    shortTitle: 'Estrutura Mental',
+    module: 'memoria',
+    group: 'memorizacao',
+    groupLabel: 'Internalização',
+    order: 23,
+    objective:
+      'Criar um mapa mental do sermão que permita pregá-lo com fluência e naturalidade. A memória não é decoreba — é o domínio da lógica e do fluxo do sermão a ponto de poder reformulá-lo com palavras próprias.',
+    keyQuestions: [
+      'Qual é a lógica que conecta cada parte do sermão?',
+      'Qual palavra-âncora representa cada ponto principal?',
+      'O esboço de pregação é simples o suficiente para ser lembrado?',
+      'Você consegue pregar o sermão de trás para frente?',
+      'O sermão foi orado e não apenas estudado?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'Martyn Lloyd-Jones', 'Charles Spurgeon', 'John Broadus'],
+    cards: [
+      {
+        id: 'esboço_pulpito',
+        title: 'Esboço de púlpito',
+        placeholder: 'Redija o esboço simplificado para uso no púlpito — apenas os pontos principais e palavras-âncora. Uma meia-página no máximo.\n\nGrande Ideia:\n\nPonto 1:\nPonto 2:\nPonto 3:\nConclusão:',
+        aiTrigger: 'Crie um esboço de púlpito simplificado para este sermão: apenas os pontos principais, palavras-âncora de cada subdivisão e a Grande Ideia central. Deve caber em meia página e ser memorizável.',
+      },
+      {
+        id: 'palavras_ancora',
+        title: 'Palavras-âncora',
+        placeholder: 'Para cada ponto e transição, escolha uma palavra ou imagem mental que funcione como âncora de memória. Esta palavra deve evocar todo o desenvolvimento do ponto.\n\nPonto 1 — âncora:\nPonto 2 — âncora:\nPonto 3 — âncora:',
+        aiTrigger: 'Proponha palavras-âncora para cada ponto deste sermão — uma palavra ou imagem mental que, ao ser lembrada, evoque todo o desenvolvimento do ponto. As âncoras devem ser concretas, distintas e ligadas ao texto.',
+      },
+      {
+        id: 'logica_fluxo',
+        title: 'Lógica e fluxo',
+        placeholder: 'Escreva a lógica do sermão em linguagem coloquial: "Começo falando de... porque o texto diz... então mostro... e concluo com...". Esta narrativa deve fluir naturalmente.\n\nFluxo:',
+        aiTrigger: 'Descreva em linguagem coloquial a lógica e o fluxo completo deste sermão — como se estivesse contando para um colega o que vai pregar. O objetivo é verificar se o argumento flui de forma natural e memorável.',
+      },
+    ],
+  },
+  {
+    slug: 'pratica_revisao',
+    title: '2. Prática e Pré-pregação',
+    shortTitle: 'Pré-pregação',
+    module: 'memoria',
+    group: 'memorizacao',
+    groupLabel: 'Internalização',
+    order: 24,
+    objective:
+      'Planejar a estratégia de revisão, prática em voz alta e preparação espiritual antes da pregação. A prática não é ensaio teatral — é o último ato de domínio do sermão a serviço da congregação.',
+    keyQuestions: [
+      'Quando e como praticar o sermão em voz alta?',
+      'Quais seções são mais vulneráveis a "travar"?',
+      'O sermão foi orado com fervura antes de ser pregado?',
+      'Há checklist pré-pregação com os pontos críticos?',
+      'O pregador está descansado, preparado espiritualmente e focado?',
+    ],
+    relevantAuthors: ['Martyn Lloyd-Jones', 'John Stott', 'Charles Spurgeon', 'Tim Keller'],
+    cards: [
+      {
+        id: 'plano_pratica',
+        title: 'Plano de prática',
+        placeholder: 'Quando e como praticar o sermão antes de pregá-lo? Em voz alta, cronometrado, gravado?\n\nPlano:\n\nDias antes:\nForma de prática:\nDuração alvo do sermão:',
+        aiTrigger: 'Proponha um plano de prática para este sermão na semana anterior à pregação. Inclua: quando praticar em voz alta, como cronometrar, se gravar ou não, como revisar os pontos vulneráveis.',
+      },
+      {
+        id: 'pontos_vulneraveis',
+        title: 'Pontos vulneráveis',
+        placeholder: 'Onde posso me perder no sermão? Que transições ou argumentos são mais difíceis de lembrar? Como salvaguardá-los?\n\nPontos críticos:\n\nSalvaguardas:',
+        aiTrigger: 'Identifique os pontos mais vulneráveis deste sermão — onde o pregador tem mais chance de perder o fio. Proponha salvaguardas: frases-gatilho, âncoras visuais, notas mínimas no esboço.',
+      },
+      {
+        id: 'preparacao_espiritual',
+        title: 'Preparação espiritual',
+        placeholder: 'A pregação começa com oração, não com estudo. Como se preparar espiritualmente para pregar esta mensagem específica?\n\nPontos de intercessão:\n\nTextos para oração:',
+        aiTrigger: 'Que aspectos desta perícope e deste sermão devem ser especialmente levados à oração antes de pregá-lo? Que demandas espirituais este texto faz ao pregador antes que ele possa pregá-lo com integridade?',
+      },
+    ],
+  },
+]
+
+WORKSPACE_SECTIONS.push(...MEMORIA_SECTIONS)
+
+// ── PRONUNTIATIO ──────────────────────────────────────────────────────────────
+
+const PRONUNTIATIO_SECTIONS: SectionDef[] = [
+  {
+    slug: 'voz_dicao',
+    title: '1. Voz e Dicção',
+    shortTitle: 'Voz',
+    module: 'pronuntiatio',
+    group: 'entrega',
+    groupLabel: 'Entrega e Comunicação',
+    order: 25,
+    objective:
+      'Cuidar da projeção vocal, articulação, variação de tom e ritmo para que a mensagem seja ouvida com clareza e autoridade. A voz é o instrumento principal do pregador — deve ser cultivada e usada a serviço do texto.',
+    keyQuestions: [
+      'O volume é adequado para o espaço sem amplificação eletrônica excessiva?',
+      'A articulação é clara, especialmente em termos teológicos?',
+      'Há variação de tom que evita a monotonia?',
+      'O ritmo permite que o ouvinte processe cada ideia?',
+      'As pausas são usadas estrategicamente para ênfase?',
+    ],
+    relevantAuthors: ['Martyn Lloyd-Jones', 'Charles Spurgeon', 'John Broadus', 'Haddon Robinson'],
+    cards: [
+      {
+        id: 'projecao_articulacao',
+        title: 'Projeção e articulação',
+        placeholder: 'Avalie sua projeção e articulação: volume adequado ao espaço, dicção clara, termos pronunciados corretamente. Quais palavras exigem atenção especial?\n\nAvaliação:\n\nPalavras a cuidar:',
+        aiTrigger: 'Que aspectos de projeção vocal e articulação são mais críticos ao pregar este sermão? Quais termos teológicos ou nomes próprios exigem atenção especial na pronúncia? Como projetar autoridade sem gritar?',
+      },
+      {
+        id: 'variacao_ritmo',
+        title: 'Variação e ritmo',
+        placeholder: 'Onde acelerar o ritmo para criar tensão? Onde desacelerar para deixar uma verdade assentar? Onde fazer pausa dramática?\n\nVariações de ritmo planejadas:',
+        aiTrigger: 'Proponha variações de ritmo para este sermão: onde acelerar para criar tensão ou urgência, onde desacelerar para deixar uma verdade assentar, onde fazer pausa dramática. O ritmo deve espelhar o movimento do próprio texto.',
+      },
+      {
+        id: 'enfase_pausas',
+        title: 'Ênfase e pausas',
+        placeholder: 'Quais afirmações merecem pausa após serem ditas? Quais frases devem ser repetidas para ênfase? Marque no esboço os momentos de pausa intencional.\n\nMomentos de ênfase e pausa:',
+        aiTrigger: 'Que afirmações deste sermão merecem pausa após serem ditas — para que o ouvinte as processe e sinta seu peso? Quais frases podem ser repetidas para ênfase? Como usar o silêncio como instrumento retórico?',
+      },
+    ],
+  },
+  {
+    slug: 'linguagem_corporal',
+    title: '2. Linguagem Corporal e Presença',
+    shortTitle: 'Linguagem Corporal',
+    module: 'pronuntiatio',
+    group: 'entrega',
+    groupLabel: 'Entrega e Comunicação',
+    order: 26,
+    objective:
+      'Usar o corpo — postura, gestos e contato visual — como amplificador da mensagem, não como distração. Presença física no púlpito comunica convicção, autoridade e cuidado pastoral.',
+    keyQuestions: [
+      'A postura comunica convicção e autoridade?',
+      'Os gestos reforçam ou distraem da mensagem?',
+      'O contato visual distribui-se por toda a congregação?',
+      'Há tiques ou maneirismos que devem ser eliminados?',
+      'O corpo está a serviço do texto ou chamando atenção para si?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'John Stott', 'Bryan Chapell', 'Richard Lischer'],
+    cards: [
+      {
+        id: 'postura_presenca',
+        title: 'Postura e presença',
+        placeholder: 'Como estar no púlpito: pés fixos ou em movimento? Mãos onde? Postura que comunica convicção sem rigidez?\n\nPostura intencional:',
+        aiTrigger: 'Como o pregador deve se posicionar no púlpito ao pregar este sermão? Que postura comunica convicção e autoridade sem rigidez? Quando e como movimentar-se no espaço de modo que reforce a mensagem?',
+      },
+      {
+        id: 'gestos',
+        title: 'Gestos intencionais',
+        placeholder: 'Que gestos reforçam os momentos-chave do sermão? Liste gestos intencionais e identifique tiques a eliminar.\n\nGestos intencionais:\n\nTiques a eliminar:',
+        aiTrigger: 'Que gestos podem reforçar os momentos-chave deste sermão — enumeração, abertura, apontar para o texto? Quais gestos devem ser evitados por distraírem? O gesto deve nascer da convicção, não ser ensaiado artificialmente.',
+      },
+      {
+        id: 'contato_visual',
+        title: 'Contato visual',
+        placeholder: 'Como distribuir o olhar por toda a congregação? Como manter contato visual enquanto consulta o esboço?\n\nEstratégia de contato visual:',
+        aiTrigger: 'Como o pregador deve gerenciar o contato visual ao pregar este sermão? Como distribuir o olhar por diferentes setores da congregação? Como alternar entre o esboço e o olhar direto sem perder conexão com o auditório?',
+      },
+    ],
+  },
+  {
+    slug: 'avaliacao_pregacao',
+    title: '3. Avaliação Pós-pregação',
+    shortTitle: 'Avaliação',
+    module: 'pronuntiatio',
+    group: 'avaliacao_pregacao',
+    groupLabel: 'Avaliação',
+    order: 27,
+    objective:
+      'Refletir sobre a pregação após entregá-la, identificando pontos fortes, fracos e áreas de crescimento. O pregador que avalia sua pregação sistematicamente cresce mais rápido do que aquele que apenas prega.',
+    keyQuestions: [
+      'O sermão comunicou a Grande Ideia com clareza?',
+      'O texto foi exposto ou apenas ilustrado?',
+      'O ouvinte saiu sabendo o que crer e o que fazer?',
+      'Onde o sermão perdeu o auditório?',
+      'O que fazer diferente na próxima pregação?',
+    ],
+    relevantAuthors: ['Haddon Robinson', 'Bryan Chapell', 'Tim Keller', 'Martyn Lloyd-Jones'],
+    cards: [
+      {
+        id: 'auto_avaliacao',
+        title: 'Autoavaliação',
+        placeholder: 'O que funcionou bem? O que não funcionou? Onde o sermão perdeu força? Seja honesto e específico.\n\nO que funcionou:\n\nO que não funcionou:\n\nOnde perdi o auditório:',
+        aiTrigger: 'Crie um roteiro de autoavaliação para após pregar este sermão. Que perguntas o pregador deve se fazer sobre conteúdo, estrutura, linguagem e entrega? Como avaliar se a Grande Ideia foi comunicada com clareza?',
+      },
+      {
+        id: 'feedback_recebido',
+        title: 'Feedback recebido',
+        placeholder: 'O que membros da congregação ou colegas de ministério disseram sobre o sermão? O que o feedback revela sobre a comunicação?\n\nFeedback:\n\nO que aprender com ele:',
+        aiTrigger: 'Que tipo de feedback o pregador deve buscar após pregar este sermão? Que perguntas fazer a membros da congregação ou mentores? Como distinguir feedback útil de mero elogio ou crítica infundada?',
+      },
+      {
+        id: 'crescimento_continuo',
+        title: 'Crescimento contínuo',
+        placeholder: 'Com base nesta pregação, qual é a área de maior crescimento a trabalhar? Qual habilidade homilética praticar nas próximas semanas?\n\nÁrea de crescimento:\n\nPlano de desenvolvimento:',
+        aiTrigger: 'Com base nas características desta perícope e no tipo de sermão que ela exige, que habilidade homilética o pregador deveria desenvolver? Que exercício prático de pregação pode ser feito nas próximas semanas para crescer nessa área?',
+      },
+    ],
+  },
+]
+
+WORKSPACE_SECTIONS.push(...PRONUNTIATIO_SECTIONS)
+
 export const INVENTIO_GROUPS = [
   { id: 'contextual', label: 'Estudo Contextual' },
   { id: 'textual', label: 'Estudo Textual' },
@@ -858,6 +1196,21 @@ export const DISPOSITIO_GROUPS = [
   { id: 'proposicao', label: 'Ideia e Proposição' },
   { id: 'estrutura', label: 'Estrutura do Sermão' },
   { id: 'encerramento', label: 'Aplicação e Conclusão' },
+] as const
+
+export const ELOCUTIO_GROUPS = [
+  { id: 'vocabulario', label: 'Vocabulário e Clareza' },
+  { id: 'imagens', label: 'Imagens e Retórica' },
+  { id: 'tom', label: 'Tom e Voz Pastoral' },
+] as const
+
+export const MEMORIA_GROUPS = [
+  { id: 'memorizacao', label: 'Internalização' },
+] as const
+
+export const PRONUNTIATIO_GROUPS = [
+  { id: 'entrega', label: 'Entrega e Comunicação' },
+  { id: 'avaliacao_pregacao', label: 'Avaliação' },
 ] as const
 
 // ── HELPERS ────────────────────────────────────────────────────────────────

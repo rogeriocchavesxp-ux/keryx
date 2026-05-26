@@ -6,10 +6,14 @@ import type { User } from '@supabase/supabase-js'
 import type { Project, Section } from '@/types/database'
 import {
   WORKSPACE_SECTIONS,
+  SYNTHESIS_DEFS,
   getSectionsByGroup,
   getSectionBySlug,
+  isSynthesisSlug,
+  getSynthesisBySlug,
 } from '@/lib/workspace-sections'
 import SectionWorkspace from './SectionWorkspace'
+import SynthesisView from './SynthesisView'
 import AIPanel from './AIPanel'
 
 interface Props {
@@ -60,11 +64,13 @@ const NAV_PHASES = [
 type PhaseId = typeof NAV_PHASES[number]['id']
 
 function getPhaseFor(slug: string): PhaseId {
+  if (isSynthesisSlug(slug)) return 'interpretar'
   const sec = getSectionBySlug(slug)
   return sec?.module === 'inventio' ? 'interpretar' : 'comunicar'
 }
 
 function getGroupFor(slug: string): string | undefined {
+  if (isSynthesisSlug(slug)) return getSynthesisBySlug(slug)?.groupId
   return getSectionBySlug(slug)?.group
 }
 
@@ -348,6 +354,45 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                             )
                           })}
 
+                          {/* Synthesis item (only for groups that have one) */}
+                          {groupOpen && (() => {
+                            const syn = SYNTHESIS_DEFS[group.id]
+                            if (!syn) return null
+                            const isSynActive = activeSlug === syn.slug
+                            return (
+                              <button
+                                onClick={() => navigate(syn.slug)}
+                                style={{
+                                  width: '100%', border: 'none', fontFamily: 'inherit',
+                                  background: isSynActive ? phase.bgActive : 'transparent',
+                                  borderLeft: `2px solid ${isSynActive ? phase.color : 'var(--border-subtle)'}`,
+                                  padding: '0.28rem 0.6rem 0.28rem 1.3rem',
+                                  display: 'flex', alignItems: 'center', gap: '0.45rem',
+                                  cursor: 'pointer', textAlign: 'left',
+                                  marginTop: '0.2rem',
+                                  transition: 'background 0.1s',
+                                }}
+                                onMouseEnter={e => { if (!isSynActive) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+                                onMouseLeave={e => { if (!isSynActive) e.currentTarget.style.background = 'transparent' }}
+                              >
+                                <span style={{
+                                  width: '4px', height: '2px', borderRadius: '1px',
+                                  flexShrink: 0,
+                                  background: isSynActive ? phase.color : 'var(--border)',
+                                }} />
+                                <span style={{
+                                  fontSize: '0.72rem', lineHeight: '1.3',
+                                  color: isSynActive ? phase.color : 'var(--text-muted)',
+                                  fontWeight: isSynActive ? '500' : '400',
+                                  fontStyle: 'italic', flex: 1,
+                                }}>
+                                  {syn.shortTitle}
+                                </span>
+                                <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', opacity: 0.5 }}>→</span>
+                              </button>
+                            )
+                          })()}
+
                         </div>
                       )
                     })}
@@ -370,6 +415,15 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                 userId={user.id}
                 existingSection={activeSection}
                 onUpdate={handleSectionUpdate}
+                onAskAI={prompt => { setAiPrompt(prompt); setAiOpen(true) }}
+              />
+            ) : isSynthesisSlug(activeSlug) ? (
+              <SynthesisView
+                key={activeSlug}
+                synthesisDef={getSynthesisBySlug(activeSlug)!}
+                project={project}
+                savedSections={sections}
+                onNavigate={navigate}
                 onAskAI={prompt => { setAiPrompt(prompt); setAiOpen(true) }}
               />
             ) : (

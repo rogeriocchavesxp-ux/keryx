@@ -1222,3 +1222,53 @@ export function getSectionsByGroup(groupId: string): SectionDef[] {
 export function getSectionBySlug(slug: string): SectionDef | undefined {
   return WORKSPACE_SECTIONS.find(s => s.slug === slug)
 }
+
+// ── SÍNTESES ───────────────────────────────────────────────────────────────
+
+export interface SynthesisDef {
+  slug: string
+  title: string
+  shortTitle: string
+  groupId: string
+  groupLabel: string
+  nextGroup: { id: string; label: string; phaseId: 'interpretar' | 'comunicar' }
+  ctaDescription: string
+}
+
+export const SYNTHESIS_DEFS: Record<string, SynthesisDef> = {
+  contextual: {
+    slug: '_sintese_contextual',
+    title: 'Síntese do Estudo Contextual',
+    shortTitle: 'Síntese',
+    groupId: 'contextual',
+    groupLabel: 'Estudo Contextual',
+    nextGroup: { id: 'textual', label: 'Estudo Textual', phaseId: 'interpretar' },
+    ctaDescription: 'O horizonte histórico-cultural está mapeado. Avance para a análise gramatical, léxica e estrutural do texto original.',
+  },
+  textual: {
+    slug: '_sintese_textual',
+    title: 'Síntese do Estudo Textual',
+    shortTitle: 'Síntese',
+    groupId: 'textual',
+    groupLabel: 'Estudo Textual',
+    nextGroup: { id: 'teologico', label: 'Estudo Teológico', phaseId: 'interpretar' },
+    ctaDescription: 'A análise textual está completa. Avance para a investigação canônica, revelacional e teológica da passagem.',
+  },
+  teologico: {
+    slug: '_sintese_teologica',
+    title: 'Síntese do Estudo Teológico',
+    shortTitle: 'Síntese',
+    groupId: 'teologico',
+    groupLabel: 'Estudo Teológico',
+    nextGroup: { id: 'proposicao', label: 'Construção do Sermão', phaseId: 'comunicar' },
+    ctaDescription: 'O estudo exegético está consolidado. É hora de construir o sermão — transformar exegese em proclamação fiel.',
+  },
+}
+
+export function isSynthesisSlug(slug: string): boolean {
+  return slug.startsWith('_sintese_')
+}
+
+export function getSynthesisBySlug(slug: string): SynthesisDef | undefined {
+  return Object.values(SYNTHESIS_DEFS).find(s => s.slug === slug)
+}

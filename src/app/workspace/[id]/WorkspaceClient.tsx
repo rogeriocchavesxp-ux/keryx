@@ -22,46 +22,72 @@ interface Props {
   initialSections: Section[]
 }
 
-// ── Estrutura de navegação em duas fases ───────────────────────────────────
+// ── Tipos de navegação ─────────────────────────────────────────────────────
 
-const NAV_PHASES = [
+type PhaseId = 'interpretar' | 'comunicar'
+
+interface NavGroup { id: string; label: string }
+interface NavCanon { id: string; label: string; latinNote: string | null; groups: NavGroup[] }
+interface NavPhase { id: PhaseId; roman: string; label: string; color: string; bgActive: string; canons: NavCanon[] }
+
+const NAV_PHASES: NavPhase[] = [
   {
-    id: 'interpretar',
-    roman: 'I',
-    label: 'Interpretar',
-    latinNote: 'Inventio',
-    color: 'var(--accent)',
-    bgActive: 'rgba(184,146,42,0.08)',
-    modules: ['inventio'],
-    groups: [
-      { id: 'contextual', label: 'Estudo Contextual' },
-      { id: 'textual',    label: 'Estudo Textual' },
-      { id: 'teologico',  label: 'Estudo Teológico' },
+    id: 'interpretar', roman: 'I', label: 'Interpretar',
+    color: 'var(--accent)', bgActive: 'rgba(184,146,42,0.08)',
+    canons: [
+      {
+        id: 'inventio', label: 'Invenção', latinNote: 'Inventio',
+        groups: [
+          { id: 'contextual', label: 'Estudo Contextual' },
+          { id: 'textual',    label: 'Estudo Textual' },
+          { id: 'teologico',  label: 'Estudo Teológico' },
+        ],
+      },
     ],
   },
   {
-    id: 'comunicar',
-    roman: 'II',
-    label: 'Comunicar',
-    latinNote: 'Dispositio · Elocutio · Memoria · Pronuntiatio',
-    color: 'var(--ai)',
-    bgActive: 'rgba(124,156,191,0.08)',
-    modules: ['dispositio', 'elocutio', 'memoria', 'pronuntiatio'],
-    groups: [
-      { id: 'proposicao',         label: 'Ideia e Propósito' },
-      { id: 'estrutura',          label: 'Estrutura do Sermão' },
-      { id: 'encerramento',       label: 'Aplicação e Conclusão' },
-      { id: 'vocabulario',        label: 'Linguagem e Clareza' },
-      { id: 'imagens',            label: 'Imagens e Retórica' },
-      { id: 'tom',                label: 'Tom Pastoral' },
-      { id: 'memorizacao',        label: 'Internalização · Memoria' },
-      { id: 'entrega',            label: 'Entrega · Pronuntiatio' },
-      { id: 'avaliacao_pregacao', label: 'Avaliação' },
+    id: 'comunicar', roman: 'II', label: 'Comunicar',
+    color: 'var(--ai)', bgActive: 'rgba(124,156,191,0.08)',
+    canons: [
+      {
+        id: 'dispositio', label: 'Disposição', latinNote: 'Dispositio',
+        groups: [
+          { id: 'proposicao',   label: 'Ideia e Proposição' },
+          { id: 'estrutura',    label: 'Estrutura do Sermão' },
+          { id: 'encerramento', label: 'Aplicação e Conclusão' },
+        ],
+      },
+      {
+        id: 'elocutio', label: 'Elocução', latinNote: 'Elocutio',
+        groups: [
+          { id: 'vocabulario', label: 'Vocabulário e Clareza' },
+          { id: 'imagens',     label: 'Imagens e Retórica' },
+          { id: 'tom',         label: 'Tom e Voz Pastoral' },
+        ],
+      },
+      {
+        id: 'memoria', label: 'Memória', latinNote: 'Memoria',
+        groups: [
+          { id: 'memorizacao', label: 'Internalização' },
+        ],
+      },
+      {
+        id: 'pronuntiatio', label: 'Entrega', latinNote: 'Pronuntiatio',
+        groups: [
+          { id: 'entrega', label: 'Pregação e Entrega' },
+        ],
+      },
+      {
+        id: 'avaliacao_canon', label: 'Avaliação', latinNote: null,
+        groups: [
+          { id: 'avaliacao_pregacao', label: 'Revisão Final' },
+        ],
+      },
     ],
   },
-] as const
+]
 
-type PhaseId = typeof NAV_PHASES[number]['id']
+// ── Helpers de navegação ───────────────────────────────────────────────────
 
 function getPhaseFor(slug: string): PhaseId {
   if (isSynthesisSlug(slug)) return 'interpretar'
@@ -72,6 +98,17 @@ function getPhaseFor(slug: string): PhaseId {
 function getGroupFor(slug: string): string | undefined {
   if (isSynthesisSlug(slug)) return getSynthesisBySlug(slug)?.groupId
   return getSectionBySlug(slug)?.group
+}
+
+function getCanonFor(slug: string): string | undefined {
+  const groupId = getGroupFor(slug)
+  if (!groupId) return undefined
+  for (const phase of NAV_PHASES) {
+    for (const canon of phase.canons) {
+      if (canon.groups.some(g => g.id === groupId)) return canon.id
+    }
+  }
+  return undefined
 }
 
 function statusDot(status: 'empty' | 'draft' | 'reviewed' | undefined): string {
@@ -87,6 +124,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   const [sections, setSections] = useState<Section[]>(initialSections)
   const [activeSlug, setActiveSlug] = useState('contexto_historico')
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(() => new Set(['interpretar']))
+  const [expandedCanons, setExpandedCanons] = useState<Set<string>>(() => new Set(['inventio']))
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(['contextual']))
   const [aiOpen, setAiOpen] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
@@ -104,23 +142,21 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   }, [])
 
   function togglePhase(id: string) {
-    setExpandedPhases(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setExpandedPhases(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  function toggleCanon(id: string) {
+    setExpandedCanons(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
   function toggleGroup(id: string) {
-    setExpandedGroups(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setExpandedGroups(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
   function navigate(slug: string) {
     setExpandedPhases(prev => new Set([...prev, getPhaseFor(slug)]))
+    const c = getCanonFor(slug)
+    if (c) setExpandedCanons(prev => new Set([...prev, c]))
     const g = getGroupFor(slug)
     if (g) setExpandedGroups(prev => new Set([...prev, g]))
     setActiveSlug(slug)
@@ -153,7 +189,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
         borderBottom: '1px solid var(--border-subtle)',
         background: 'var(--surface)',
         display: 'flex', alignItems: 'center',
-        padding: '0 1rem 0 0.75rem', gap: '0',
+        padding: '0 1rem 0 0.75rem',
       }}>
         <button
           onClick={() => router.push('/dashboard')}
@@ -173,7 +209,10 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
         <div style={{ width: '1px', height: '14px', background: 'var(--border-subtle)', marginRight: '0.6rem', flexShrink: 0 }} />
 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '0.45rem', overflow: 'hidden' }}>
-          <span style={{ fontWeight: '600', fontSize: '0.86rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>
+          <span style={{
+            fontWeight: '600', fontSize: '0.86rem', color: 'var(--text-primary)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1,
+          }}>
             {project.title}
           </span>
           <span style={{ color: 'var(--border)', fontSize: '0.78rem', flexShrink: 0 }}>·</span>
@@ -223,176 +262,208 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
 
         {/* ── Sidebar ───────────────────────────────────────────────────── */}
         <nav style={{
-          width: '164px', flexShrink: 0,
+          width: '176px', flexShrink: 0,
           borderRight: '1px solid var(--border-subtle)',
           background: 'var(--surface)',
           overflowY: 'auto',
           display: 'flex', flexDirection: 'column',
-          paddingBottom: '2rem',
+          paddingBottom: '2.5rem',
         }}>
-
           {NAV_PHASES.map((phase, phaseIdx) => {
             const phaseOpen = expandedPhases.has(phase.id)
 
             return (
               <div key={phase.id}>
 
-                {/* Phase toggle button */}
+                {/* Phase header */}
                 <button
                   onClick={() => togglePhase(phase.id)}
                   style={{
                     width: '100%', border: 'none', cursor: 'pointer',
                     background: 'transparent', textAlign: 'left',
-                    padding: phaseIdx === 0 ? '0.85rem 0.75rem 0.5rem' : '0.75rem 0.75rem 0.5rem',
+                    padding: phaseIdx === 0 ? '0.9rem 0.75rem 0.5rem' : '0.75rem 0.75rem 0.5rem',
                     borderTop: phaseIdx > 0 ? '1px solid var(--border-subtle)' : 'none',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
-                      <span style={{
-                        fontSize: '0.58rem', fontWeight: '800',
-                        color: phase.color, opacity: 0.55,
-                        letterSpacing: '0.08em',
-                      }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+                      <span style={{ fontSize: '0.56rem', fontWeight: '800', color: phase.color, opacity: 0.5, letterSpacing: '0.08em' }}>
                         {phase.roman}
                       </span>
-                      <span style={{
-                        fontSize: '0.85rem', fontWeight: '700',
-                        color: phase.color, letterSpacing: '-0.01em',
-                      }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: '700', color: phase.color, letterSpacing: '-0.01em' }}>
                         {phase.label}
                       </span>
                     </div>
-                    <span style={{ fontSize: '0.52rem', color: 'var(--text-muted)', opacity: 0.6 }}>
+                    <span style={{ fontSize: '0.5rem', color: 'var(--text-muted)', opacity: 0.55 }}>
                       {phaseOpen ? '▾' : '▸'}
                     </span>
                   </div>
-                  <span style={{
-                    fontSize: '0.63rem', color: 'var(--text-muted)',
-                    fontStyle: 'italic', display: 'block', lineHeight: '1.3',
-                    paddingLeft: '0.05rem',
-                  }}>
-                    {phase.latinNote}
-                  </span>
                 </button>
 
-                {/* Groups */}
+                {/* Canons */}
                 {phaseOpen && (
-                  <div style={{ paddingBottom: '0.6rem' }}>
-                    {phase.groups.map(group => {
-                      const groupOpen = expandedGroups.has(group.id)
-                      const secs = getSectionsByGroup(group.id)
-                      if (secs.length === 0) return null
-                      const { done, total } = groupProgress(group.id)
+                  <div style={{ paddingBottom: '0.4rem' }}>
+                    {phase.canons.map((canon, canonIdx) => {
+                      const canonOpen = expandedCanons.has(canon.id)
 
                       return (
-                        <div key={group.id}>
+                        <div key={canon.id}>
 
-                          {/* Group toggle */}
+                          {/* Canon header */}
                           <button
-                            onClick={() => toggleGroup(group.id)}
+                            onClick={() => toggleCanon(canon.id)}
                             style={{
-                              width: '100%', background: 'transparent', border: 'none',
-                              padding: '0.35rem 0.75rem 0.32rem 0.55rem',
-                              display: 'flex', alignItems: 'center', gap: '0.35rem',
-                              cursor: 'pointer', textAlign: 'left',
+                              width: '100%', border: 'none', cursor: 'pointer',
+                              background: 'transparent', textAlign: 'left',
+                              padding: '0.4rem 0.6rem 0.35rem 0.8rem',
+                              borderTop: canonIdx > 0 ? '1px solid var(--border-subtle)' : 'none',
+                              display: 'flex', alignItems: 'flex-start', gap: '0.3rem',
                             }}
                           >
-                            <span style={{ fontSize: '0.52rem', color: 'var(--text-muted)', opacity: 0.55, flexShrink: 0 }}>
-                              {groupOpen ? '▾' : '▸'}
+                            <span style={{ fontSize: '0.48rem', color: phase.color, opacity: 0.6, flexShrink: 0, marginTop: '0.22rem' }}>
+                              {canonOpen ? '▾' : '▸'}
                             </span>
-                            <span style={{
-                              fontSize: '0.71rem', fontWeight: '500',
-                              color: 'var(--text-secondary)', flex: 1, lineHeight: '1.3',
-                            }}>
-                              {group.label}
-                            </span>
-                            {done > 0 && (
-                              <span style={{
-                                fontSize: '0.59rem', flexShrink: 0,
-                                color: done === total ? 'var(--success)' : 'var(--text-muted)',
-                                opacity: 0.8,
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: '0.74rem', fontWeight: '600',
+                                color: phase.color, lineHeight: '1.2',
                               }}>
-                                {done}/{total}
-                              </span>
-                            )}
+                                {canon.label}
+                              </div>
+                              {canon.latinNote && (
+                                <div style={{
+                                  fontSize: '0.59rem', color: 'var(--text-muted)',
+                                  fontStyle: 'italic', lineHeight: '1.2', marginTop: '0.08rem',
+                                }}>
+                                  {canon.latinNote}
+                                </div>
+                              )}
+                            </div>
                           </button>
 
-                          {/* Section items */}
-                          {groupOpen && secs.map(sd => {
-                            const sec = sections.find(s => s.slug === sd.slug)
-                            const isActive = sd.slug === activeSlug
-                            return (
-                              <button
-                                key={sd.slug}
-                                onClick={() => navigate(sd.slug)}
-                                style={{
-                                  width: '100%', border: 'none', fontFamily: 'inherit',
-                                  background: isActive ? phase.bgActive : 'transparent',
-                                  borderLeft: `2px solid ${isActive ? phase.color : 'transparent'}`,
-                                  padding: '0.26rem 0.45rem 0.26rem 1.05rem',
-                                  display: 'flex', alignItems: 'center', gap: '0.4rem',
-                                  cursor: 'pointer', textAlign: 'left',
-                                  transition: 'background 0.1s',
-                                }}
-                                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
-                                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
-                              >
-                                <span style={{
-                                  width: '4px', height: '4px', borderRadius: '50%',
-                                  flexShrink: 0, background: statusDot(sec?.status),
-                                  opacity: isActive ? 1 : 0.55,
-                                }} />
-                                <span style={{
-                                  fontSize: '0.75rem', lineHeight: '1.3',
-                                  color: isActive ? phase.color : 'var(--text-secondary)',
-                                  fontWeight: isActive ? '500' : '400',
-                                }}>
-                                  {sd.shortTitle}
-                                </span>
-                              </button>
-                            )
-                          })}
+                          {/* Groups */}
+                          {canonOpen && (
+                            <div style={{ paddingBottom: '0.2rem' }}>
+                              {canon.groups.map(group => {
+                                const groupOpen = expandedGroups.has(group.id)
+                                const secs = getSectionsByGroup(group.id)
+                                if (secs.length === 0) return null
+                                const { done, total } = groupProgress(group.id)
 
-                          {/* Synthesis item (only for groups that have one) */}
-                          {groupOpen && (() => {
-                            const syn = SYNTHESIS_DEFS[group.id]
-                            if (!syn) return null
-                            const isSynActive = activeSlug === syn.slug
-                            return (
-                              <button
-                                onClick={() => navigate(syn.slug)}
-                                style={{
-                                  width: '100%', border: 'none', fontFamily: 'inherit',
-                                  background: isSynActive ? phase.bgActive : 'transparent',
-                                  borderLeft: `2px solid ${isSynActive ? phase.color : 'var(--border-subtle)'}`,
-                                  padding: '0.26rem 0.45rem 0.26rem 1.05rem',
-                                  display: 'flex', alignItems: 'center', gap: '0.4rem',
-                                  cursor: 'pointer', textAlign: 'left',
-                                  marginTop: '0.2rem',
-                                  transition: 'background 0.1s',
-                                }}
-                                onMouseEnter={e => { if (!isSynActive) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
-                                onMouseLeave={e => { if (!isSynActive) e.currentTarget.style.background = 'transparent' }}
-                              >
-                                <span style={{
-                                  width: '4px', height: '2px', borderRadius: '1px',
-                                  flexShrink: 0,
-                                  background: isSynActive ? phase.color : 'var(--border)',
-                                }} />
-                                <span style={{
-                                  fontSize: '0.72rem', lineHeight: '1.3',
-                                  color: isSynActive ? phase.color : 'var(--text-muted)',
-                                  fontWeight: isSynActive ? '500' : '400',
-                                  fontStyle: 'italic', flex: 1,
-                                }}>
-                                  {syn.shortTitle}
-                                </span>
-                                <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', opacity: 0.5 }}>→</span>
-                              </button>
-                            )
-                          })()}
+                                return (
+                                  <div key={group.id}>
 
+                                    {/* Group toggle */}
+                                    <button
+                                      onClick={() => toggleGroup(group.id)}
+                                      style={{
+                                        width: '100%', background: 'transparent', border: 'none',
+                                        padding: '0.3rem 0.55rem 0.28rem 1.1rem',
+                                        display: 'flex', alignItems: 'center', gap: '0.28rem',
+                                        cursor: 'pointer', textAlign: 'left',
+                                      }}
+                                    >
+                                      <span style={{ fontSize: '0.46rem', color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }}>
+                                        {groupOpen ? '▾' : '▸'}
+                                      </span>
+                                      <span style={{
+                                        fontSize: '0.67rem', fontWeight: '500',
+                                        color: 'var(--text-secondary)', flex: 1, lineHeight: '1.3',
+                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                      }}>
+                                        {group.label}
+                                      </span>
+                                      {done > 0 && (
+                                        <span style={{
+                                          fontSize: '0.56rem', flexShrink: 0,
+                                          color: done === total ? 'var(--success)' : 'var(--text-muted)',
+                                          opacity: 0.75,
+                                        }}>
+                                          {done}/{total}
+                                        </span>
+                                      )}
+                                    </button>
+
+                                    {/* Section items */}
+                                    {groupOpen && secs.map(sd => {
+                                      const sec = sections.find(s => s.slug === sd.slug)
+                                      const isActive = sd.slug === activeSlug
+                                      return (
+                                        <button
+                                          key={sd.slug}
+                                          onClick={() => navigate(sd.slug)}
+                                          style={{
+                                            width: '100%', border: 'none', fontFamily: 'inherit',
+                                            background: isActive ? phase.bgActive : 'transparent',
+                                            borderLeft: `2px solid ${isActive ? phase.color : 'transparent'}`,
+                                            padding: '0.24rem 0.4rem 0.24rem 1.3rem',
+                                            display: 'flex', alignItems: 'center', gap: '0.36rem',
+                                            cursor: 'pointer', textAlign: 'left',
+                                            transition: 'background 0.1s',
+                                          }}
+                                          onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+                                          onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                                        >
+                                          <span style={{
+                                            width: '4px', height: '4px', borderRadius: '50%', flexShrink: 0,
+                                            background: statusDot(sec?.status),
+                                            opacity: isActive ? 1 : 0.5,
+                                          }} />
+                                          <span style={{
+                                            fontSize: '0.71rem', lineHeight: '1.3',
+                                            color: isActive ? phase.color : 'var(--text-secondary)',
+                                            fontWeight: isActive ? '500' : '400',
+                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                          }}>
+                                            {sd.shortTitle}
+                                          </span>
+                                        </button>
+                                      )
+                                    })}
+
+                                    {/* Synthesis item */}
+                                    {groupOpen && (() => {
+                                      const syn = SYNTHESIS_DEFS[group.id]
+                                      if (!syn) return null
+                                      const isSynActive = activeSlug === syn.slug
+                                      return (
+                                        <button
+                                          onClick={() => navigate(syn.slug)}
+                                          style={{
+                                            width: '100%', border: 'none', fontFamily: 'inherit',
+                                            background: isSynActive ? phase.bgActive : 'transparent',
+                                            borderLeft: `2px solid ${isSynActive ? phase.color : 'var(--border-subtle)'}`,
+                                            padding: '0.24rem 0.4rem 0.24rem 1.3rem',
+                                            display: 'flex', alignItems: 'center', gap: '0.36rem',
+                                            cursor: 'pointer', textAlign: 'left',
+                                            marginTop: '0.15rem',
+                                            transition: 'background 0.1s',
+                                          }}
+                                          onMouseEnter={e => { if (!isSynActive) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+                                          onMouseLeave={e => { if (!isSynActive) e.currentTarget.style.background = 'transparent' }}
+                                        >
+                                          <span style={{
+                                            width: '4px', height: '2px', borderRadius: '1px', flexShrink: 0,
+                                            background: isSynActive ? phase.color : 'var(--border)',
+                                          }} />
+                                          <span style={{
+                                            fontSize: '0.69rem', lineHeight: '1.3',
+                                            color: isSynActive ? phase.color : 'var(--text-muted)',
+                                            fontStyle: 'italic', flex: 1,
+                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                          }}>
+                                            {syn.shortTitle}
+                                          </span>
+                                          <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', opacity: 0.45, flexShrink: 0 }}>→</span>
+                                        </button>
+                                      )
+                                    })()}
+
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -438,7 +509,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
             )}
           </main>
 
-          {/* AI panel — flex sibling, not overlay, so content is never obscured */}
+          {/* AI panel — flex sibling so content is never obscured */}
           <aside style={{
             flexShrink: 0,
             width: aiOpen ? '308px' : '0',
@@ -448,7 +519,6 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
             display: 'flex', flexDirection: 'column',
             transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
           }}>
-            {/* Inner fixed-width wrapper prevents content reflow during animation */}
             <div style={{ width: '308px', flexShrink: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
               <AIPanel
                 project={project}
@@ -461,7 +531,6 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
           </aside>
 
         </div>
-
       </div>
     </div>
   )

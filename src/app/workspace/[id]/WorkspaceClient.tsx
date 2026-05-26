@@ -223,7 +223,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
 
         {/* ── Sidebar ───────────────────────────────────────────────────── */}
         <nav style={{
-          width: '196px', flexShrink: 0,
+          width: '164px', flexShrink: 0,
           borderRight: '1px solid var(--border-subtle)',
           background: 'var(--surface)',
           overflowY: 'auto',
@@ -243,7 +243,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                   style={{
                     width: '100%', border: 'none', cursor: 'pointer',
                     background: 'transparent', textAlign: 'left',
-                    padding: phaseIdx === 0 ? '1rem 0.9rem 0.55rem' : '0.9rem 0.9rem 0.55rem',
+                    padding: phaseIdx === 0 ? '0.85rem 0.75rem 0.5rem' : '0.75rem 0.75rem 0.5rem',
                     borderTop: phaseIdx > 0 ? '1px solid var(--border-subtle)' : 'none',
                   }}
                 >
@@ -293,7 +293,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                             onClick={() => toggleGroup(group.id)}
                             style={{
                               width: '100%', background: 'transparent', border: 'none',
-                              padding: '0.38rem 0.9rem 0.35rem 0.7rem',
+                              padding: '0.35rem 0.75rem 0.32rem 0.55rem',
                               display: 'flex', alignItems: 'center', gap: '0.35rem',
                               cursor: 'pointer', textAlign: 'left',
                             }}
@@ -330,8 +330,8 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                   width: '100%', border: 'none', fontFamily: 'inherit',
                                   background: isActive ? phase.bgActive : 'transparent',
                                   borderLeft: `2px solid ${isActive ? phase.color : 'transparent'}`,
-                                  padding: '0.28rem 0.6rem 0.28rem 1.3rem',
-                                  display: 'flex', alignItems: 'center', gap: '0.45rem',
+                                  padding: '0.26rem 0.45rem 0.26rem 1.05rem',
+                                  display: 'flex', alignItems: 'center', gap: '0.4rem',
                                   cursor: 'pointer', textAlign: 'left',
                                   transition: 'background 0.1s',
                                 }}
@@ -366,8 +366,8 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                   width: '100%', border: 'none', fontFamily: 'inherit',
                                   background: isSynActive ? phase.bgActive : 'transparent',
                                   borderLeft: `2px solid ${isSynActive ? phase.color : 'var(--border-subtle)'}`,
-                                  padding: '0.28rem 0.6rem 0.28rem 1.3rem',
-                                  display: 'flex', alignItems: 'center', gap: '0.45rem',
+                                  padding: '0.26rem 0.45rem 0.26rem 1.05rem',
+                                  display: 'flex', alignItems: 'center', gap: '0.4rem',
                                   cursor: 'pointer', textAlign: 'left',
                                   marginTop: '0.2rem',
                                   transition: 'background 0.1s',
@@ -404,9 +404,11 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
           })}
         </nav>
 
-        {/* ── Content + AI drawer ───────────────────────────────────────── */}
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-          <main style={{ height: '100%', overflowY: 'auto', background: 'var(--background)' }}>
+        {/* ── Content + AI panel ───────────────────────────────────────── */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', overflow: 'hidden' }}>
+
+          {/* Reading area */}
+          <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', background: 'var(--background)' }}>
             {activeDef ? (
               <SectionWorkspace
                 key={activeSlug}
@@ -436,25 +438,28 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
             )}
           </main>
 
+          {/* AI panel — flex sibling, not overlay, so content is never obscured */}
           <aside style={{
-            position: 'absolute', inset: '0 0 0 auto',
-            width: '340px',
+            flexShrink: 0,
+            width: aiOpen ? '308px' : '0',
+            overflow: 'hidden',
+            borderLeft: aiOpen ? '1px solid var(--border-subtle)' : 'none',
             background: 'var(--surface)',
-            borderLeft: '1px solid var(--border-subtle)',
             display: 'flex', flexDirection: 'column',
-            transform: aiOpen ? 'translateX(0)' : 'translateX(100%)',
-            transition: 'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: aiOpen ? '-12px 0 40px rgba(0,0,0,0.18)' : 'none',
-            zIndex: 20, willChange: 'transform',
+            transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
           }}>
-            <AIPanel
-              project={project}
-              activeSlug={activeSlug}
-              activeTitle={activeDef?.title ?? ''}
-              context={aiPrompt}
-              onClearContext={() => setAiPrompt('')}
-            />
+            {/* Inner fixed-width wrapper prevents content reflow during animation */}
+            <div style={{ width: '308px', flexShrink: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <AIPanel
+                project={project}
+                activeSlug={activeSlug}
+                activeTitle={activeDef?.title ?? ''}
+                context={aiPrompt}
+                onClearContext={() => setAiPrompt('')}
+              />
+            </div>
           </aside>
+
         </div>
 
       </div>

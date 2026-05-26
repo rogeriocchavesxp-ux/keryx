@@ -176,7 +176,7 @@ export default function SectionWorkspace({
     : ''
 
   return (
-    <div style={{ maxWidth: '820px', margin: '0 auto', padding: '2.5rem 2.5rem 5rem', fontFamily: 'var(--font-sans)' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2.5rem clamp(1.5rem, 4vw, 2.5rem) 5rem', fontFamily: 'var(--font-sans)' }}>
 
       {/* Breadcrumb */}
       <div style={{

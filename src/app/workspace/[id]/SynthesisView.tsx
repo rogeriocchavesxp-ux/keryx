@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import type { Project, Section } from '@/types/database'
 import { getSectionsByGroup, type SynthesisDef } from '@/lib/workspace-sections'
 
@@ -12,6 +11,35 @@ interface Props {
   onAskAI: (prompt: string) => void
 }
 
+const DOC = "'Times New Roman', Times, serif"
+
+// Detect Hebrew (U+0590–U+05FF, U+FB1D–U+FB4F) or Greek (U+0370–U+03FF, U+1F00–U+1FFF)
+const ORIG_LANG_RE = /[֐-׿יִ-ﭏͰ-Ͽἀ-῿]/
+
+function HighlightedText({ text }: { text: string }) {
+  const parts = text.split(/(\s+)/)
+  return (
+    <>
+      {parts.map((part, i) =>
+        ORIG_LANG_RE.test(part) ? (
+          <span key={i} style={{
+            fontFamily: DOC,
+            fontWeight: '600',
+            background: 'rgba(0,0,0,0.07)',
+            padding: '0 3px',
+            borderRadius: '2px',
+            letterSpacing: '0.03em',
+          }}>
+            {part}
+          </span>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  )
+}
+
 function getCards(saved: Section | undefined): Record<string, string> {
   const content = saved?.content as Record<string, unknown> | null
   if (content && typeof content === 'object' && 'cards' in content) {
@@ -20,328 +48,412 @@ function getCards(saved: Section | undefined): Record<string, string> {
   return {}
 }
 
+interface VersoData {
+  id: string
+  ref: string
+  texto: string
+  transliteracao: string
+  traducao_literal: string
+  traducao_ajustada: string
+  observacoes: string
+}
+
+function extractVersos(savedSections: Section[]): VersoData[] {
+  const sec = savedSections.find(s => s.slug === 'texto_original')
+  if (!sec) return []
+  const c = sec.content as { type?: string; versos?: VersoData[] } | null
+  if (c?.type !== 'textual_workspace' || !c.versos) return []
+  return c.versos.filter(v => v.texto?.trim() || v.traducao_literal?.trim())
+}
+
+function buildSynthesisPrompt(
+  synthesisDef: SynthesisDef,
+  project: Project,
+  savedSections: Section[],
+  groupSections: ReturnType<typeof getSectionsByGroup>,
+): string {
+  const lines: string[] = [
+    `Gere uma síntese integradora acadêmica do ${synthesisDef.groupLabel} de ${project.book} ${project.passage_ref}.`,
+    '',
+    'Organize os seguintes elementos em uma visão panorâmica coerente, relacionando os tópicos entre si e preparando a transição para a próxima etapa do estudo exegético:',
+    '',
+  ]
+  for (const sd of groupSections) {
+    const cards = getCards(savedSections.find(s => s.slug === sd.slug))
+    const hasContent = Object.values(cards).some(v => v?.trim())
+    if (!hasContent) continue
+    lines.push(`## ${sd.title}`)
+    for (const card of sd.cards) {
+      const content = cards[card.id]?.trim()
+      if (content) {
+        lines.push(`### ${card.title}`)
+        lines.push(content)
+        lines.push('')
+      }
+    }
+  }
+  lines.push('')
+  lines.push(
+    'Produza uma síntese que: (1) organize os elementos em progressão lógica e acadêmica; ' +
+    '(2) relacione os tópicos entre si; (3) use tom de caderno exegético reformado; ' +
+    '(4) prepare a transição para o próximo bloco de estudo. ' +
+    'Não use bullet points — escreva em prosa densa, como um comentarista.',
+  )
+  return lines.join('\n')
+}
+
 export default function SynthesisView({
   synthesisDef, project, savedSections, onNavigate, onAskAI,
 }: Props) {
   const groupSections = getSectionsByGroup(synthesisDef.groupId)
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    () => new Set(groupSections.map(s => s.slug))
-  )
+  const isTextual = synthesisDef.groupId === 'textual'
+  const versos = isTextual ? extractVersos(savedSections) : []
 
-  function toggleSection(slug: string) {
-    setExpandedSections(prev => {
-      const next = new Set(prev)
-      next.has(slug) ? next.delete(slug) : next.add(slug)
-      return next
-    })
-  }
+  const { nextGroup } = synthesisDef
+  const nextPhaseChange = nextGroup.phaseId === 'comunicar'
 
   const totalCards = groupSections.reduce((acc, sd) => acc + sd.cards.length, 0)
   const filledCards = groupSections.reduce((acc, sd) => {
     const cards = getCards(savedSections.find(s => s.slug === sd.slug))
     return acc + Object.values(cards).filter(v => v?.trim().length > 0).length
   }, 0)
-  const filledSections = groupSections.filter(sd => {
-    const saved = savedSections.find(s => s.slug === sd.slug)
-    return saved?.status === 'draft' || saved?.status === 'reviewed'
-  })
   const pct = totalCards > 0 ? Math.round((filledCards / totalCards) * 100) : 0
 
-  function buildSynthesisPrompt(): string {
-    const lines: string[] = [
-      `Gere uma síntese integradora acadêmica do ${synthesisDef.groupLabel} de ${project.book} ${project.passage_ref}.`,
-      '',
-      'Organize os seguintes elementos em uma visão panorâmica coerente, relacionando os tópicos entre si e preparando a transição para a próxima etapa do estudo exegético:',
-      '',
-    ]
-    for (const sd of groupSections) {
-      const cards = getCards(savedSections.find(s => s.slug === sd.slug))
-      const hasContent = Object.values(cards).some(v => v?.trim())
-      if (!hasContent) continue
-      lines.push(`## ${sd.title}`)
-      for (const card of sd.cards) {
-        const content = cards[card.id]?.trim()
-        if (content) {
-          lines.push(`### ${card.title}`)
-          lines.push(content)
-          lines.push('')
-        }
-      }
-    }
-    lines.push('')
-    lines.push(
-      'Produza uma síntese que: (1) organize os elementos em progressão lógica e acadêmica; ' +
-      '(2) relacione os tópicos entre si; (3) use tom de caderno exegético reformado; ' +
-      '(4) prepare a transição para o próximo bloco de estudo. ' +
-      'Não use bullet points — escreva em prosa densa, como um comentarista.'
-    )
-    return lines.join('\n')
-  }
-
-  const { nextGroup } = synthesisDef
-  const nextPhaseChange = nextGroup.phaseId === 'comunicar'
+  const today = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2.5rem clamp(1.5rem, 4vw, 2.5rem) 5rem', fontFamily: 'var(--font-sans)' }}>
+    <div style={{ minHeight: '100%', padding: '2.5rem 1.5rem 5rem' }}>
 
-      {/* Breadcrumb */}
+      {/* ── Document sheet ───────────────────────────────────────────────── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '0.4rem',
-        fontSize: '0.68rem', color: 'var(--text-muted)',
-        textTransform: 'uppercase', letterSpacing: '0.07em',
-        marginBottom: '0.75rem',
+        maxWidth: '760px',
+        margin: '0 auto',
+        background: '#ffffff',
+        color: '#1a1a1a',
+        fontFamily: DOC,
+        boxShadow: '0 4px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.1)',
+        borderRadius: '1px',
+        padding: 'clamp(2rem, 5vw, 3.5rem) clamp(2rem, 6vw, 4rem) 3.5rem',
       }}>
-        <span style={{ color: 'var(--accent)', fontWeight: '700' }}>Inventio</span>
-        <span style={{ color: 'var(--border)' }}>·</span>
-        <span>{synthesisDef.groupLabel}</span>
-        <span style={{ color: 'var(--border)' }}>·</span>
-        <span style={{ color: 'var(--text-secondary)' }}>Síntese</span>
-      </div>
 
-      {/* Title */}
-      <h1 style={{
-        fontSize: '1.6rem', fontWeight: '700',
-        letterSpacing: '-0.025em', lineHeight: 1.2,
-        color: 'var(--text-primary)', marginBottom: '0.85rem',
-      }}>
-        {synthesisDef.title}
-      </h1>
-
-      {/* Reference */}
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-        {project.book} {project.passage_ref} · {project.original_language}
-      </p>
-
-      {/* Progress bar */}
-      <div style={{
-        padding: '0.85rem 1rem',
-        background: 'var(--surface)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: '7px',
-        marginBottom: '2.5rem',
-      }}>
-        <div style={{
-          fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.08em',
-          textTransform: 'uppercase', color: 'var(--text-muted)',
-          marginBottom: '0.5rem',
-        }}>
-          Progresso do bloco
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ flex: 1, height: '3px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
-            <div style={{
-              height: '100%',
-              width: `${pct}%`,
-              background: pct === 100 ? 'var(--success)' : 'var(--accent)',
-              transition: 'width 0.5s ease',
-              borderRadius: '2px',
-            }} />
+        {/* ── Header ───────────────────────────────────────────────────── */}
+        <div style={{ marginBottom: '2.5rem' }}>
+          <div style={{
+            fontFamily: "'Arial', 'Helvetica', sans-serif",
+            fontSize: '8pt',
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: '#888',
+            marginBottom: '0.75rem',
+          }}>
+            Keryx — Estudo Exegético
           </div>
-          <span style={{ fontSize: '0.73rem', color: 'var(--text-secondary)', flexShrink: 0 }}>
-            {filledCards}/{totalCards} campos · {filledSections.length}/{groupSections.length} seções
-          </span>
-        </div>
-      </div>
 
-      {/* Section blocks */}
-      <div>
-        {groupSections.map((sd, idx) => {
+          <h1 style={{
+            fontFamily: DOC,
+            fontSize: '18pt',
+            fontWeight: '700',
+            color: '#1a1a1a',
+            margin: '0 0 0.5rem',
+            lineHeight: '1.2',
+          }}>
+            {synthesisDef.title}
+          </h1>
+
+          <p style={{
+            fontFamily: DOC,
+            fontSize: '12pt',
+            color: '#444',
+            margin: '0 0 0.5rem',
+            fontStyle: 'italic',
+          }}>
+            {project.book} {project.passage_ref} · {project.original_language}
+          </p>
+
+          <p style={{
+            fontFamily: "'Arial', sans-serif",
+            fontSize: '9pt',
+            color: '#999',
+            margin: '0 0 1.5rem',
+          }}>
+            {today} · {filledCards}/{totalCards} campos preenchidos ({pct}%)
+          </p>
+
+          {/* Double rule */}
+          <div style={{ borderTop: '2px solid #1a1a1a' }} />
+          <div style={{ borderTop: '1px solid #1a1a1a', marginTop: '3px', marginBottom: '2.5rem' }} />
+        </div>
+
+        {/* ── Sections ─────────────────────────────────────────────────── */}
+        {groupSections.map((sd, secIdx) => {
           const saved = savedSections.find(s => s.slug === sd.slug)
           const cards = getCards(saved)
-          const isExpanded = expandedSections.has(sd.slug)
-          const sectionFilledCount = sd.cards.filter(c => cards[c.id]?.trim()).length
-          const isLast = idx === groupSections.length - 1
+          const hasAnyContent = Object.values(cards).some(v => v?.trim())
+          const isLast = secIdx === groupSections.length - 1
 
           return (
-            <div
-              key={sd.slug}
-              style={{
-                borderTop: '1px solid var(--border-subtle)',
-                borderBottom: isLast ? '1px solid var(--border-subtle)' : 'none',
-              }}
-            >
-              {/* Section header row */}
-              <div
-                onClick={() => toggleSection(sd.slug)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.6rem',
-                  padding: '0.95rem 0',
-                  cursor: 'pointer', userSelect: 'none',
-                }}
-              >
-                <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }}>
-                  {isExpanded ? '▾' : '▸'}
-                </span>
+            <div key={sd.slug} style={{ marginBottom: '2.5rem' }}>
+
+              {/* Section heading */}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '1.15rem' }}>
                 <h2 style={{
-                  flex: 1, margin: 0,
-                  fontSize: '0.95rem', fontWeight: '600',
-                  color: 'var(--text-primary)', letterSpacing: '-0.01em',
+                  fontFamily: DOC,
+                  fontSize: '14pt',
+                  fontWeight: '700',
+                  color: '#1a1a1a',
+                  margin: 0,
+                  lineHeight: '1.3',
                 }}>
-                  {sd.title}
+                  {secIdx + 1}.&ensp;{sd.title}
                 </h2>
-                <span style={{
-                  fontSize: '0.68rem', flexShrink: 0,
-                  color: sectionFilledCount === sd.cards.length
-                    ? 'var(--success)'
-                    : sectionFilledCount > 0
-                    ? 'var(--accent)'
-                    : 'var(--border)',
-                  opacity: 0.85,
-                }}>
-                  {sectionFilledCount}/{sd.cards.length}
-                </span>
                 <button
-                  onClick={e => { e.stopPropagation(); onNavigate(sd.slug) }}
+                  onClick={() => onNavigate(sd.slug)}
                   style={{
-                    background: 'transparent',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: '4px',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    fontSize: '0.67rem', padding: '0.18rem 0.48rem',
-                    flexShrink: 0, transition: 'color 0.15s, border-color 0.15s',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontFamily: "'Arial', sans-serif",
+                    fontSize: '8pt', color: '#aaa',
+                    padding: 0, textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = 'var(--text-primary)'
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = 'var(--text-muted)'
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)'
-                  }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#555' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = '#aaa' }}
                 >
-                  Editar
+                  [editar]
                 </button>
               </div>
 
-              {/* Section content */}
-              {isExpanded && (
-                <div style={{ paddingBottom: '1.5rem', paddingLeft: '0.8rem' }}>
-                  {sd.cards.map((card, cardIdx) => {
-                    const content = cards[card.id]?.trim() ?? ''
+              {/* Cards */}
+              {hasAnyContent ? (
+                <div>
+                  {sd.cards.map((card) => {
+                    const content = cards[card.id]?.trim()
+                    if (!content) return null
                     return (
-                      <div
-                        key={card.id}
-                        style={{ marginBottom: cardIdx < sd.cards.length - 1 ? '1.3rem' : 0 }}
-                      >
+                      <div key={card.id} style={{ marginBottom: '1.35rem' }}>
                         <div style={{
-                          fontSize: '0.62rem', fontWeight: '800',
-                          letterSpacing: '0.09em', textTransform: 'uppercase',
-                          color: content ? 'var(--text-muted)' : 'var(--border)',
-                          marginBottom: '0.38rem',
+                          fontFamily: "'Arial', 'Helvetica', sans-serif",
+                          fontSize: '8.5pt',
+                          fontWeight: '700',
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          color: '#1a1a1a',
+                          marginBottom: '0.35rem',
+                          borderBottom: '1px solid #e8e8e8',
+                          paddingBottom: '0.25rem',
                         }}>
                           {card.title}
                         </div>
-                        {content ? (
-                          <p style={{
-                            margin: 0,
-                            fontSize: '0.9rem', lineHeight: '1.82',
-                            color: 'var(--text-secondary)',
-                            fontFamily: 'var(--font-serif)',
-                            whiteSpace: 'pre-wrap',
-                          }}>
-                            {content}
-                          </p>
-                        ) : (
-                          <p style={{
-                            margin: 0,
-                            fontSize: '0.82rem', lineHeight: '1.6',
-                            color: 'var(--border)',
-                            fontStyle: 'italic',
-                          }}>
-                            Não preenchido
-                          </p>
-                        )}
+                        <p style={{
+                          fontFamily: DOC,
+                          fontSize: '12pt',
+                          lineHeight: '1.85',
+                          color: '#1a1a1a',
+                          margin: 0,
+                          textAlign: 'justify',
+                          whiteSpace: 'pre-wrap',
+                        }}>
+                          <HighlightedText text={content} />
+                        </p>
                       </div>
                     )
                   })}
                 </div>
+              ) : (
+                <p style={{
+                  fontFamily: DOC, fontSize: '11pt',
+                  color: '#bbb', fontStyle: 'italic', margin: 0,
+                }}>
+                  Seção não preenchida.
+                </p>
+              )}
+
+              {/* Section divider */}
+              {!isLast && (
+                <div style={{ borderTop: '1px solid #ddd', marginTop: '2rem' }} />
               )}
             </div>
           )
         })}
+
+        {/* ── Textual: original language terms ─────────────────────────── */}
+        {isTextual && versos.length > 0 && (
+          <div style={{ marginTop: '0.5rem', marginBottom: '2.5rem' }}>
+            <div style={{ borderTop: '2px solid #1a1a1a' }} />
+            <div style={{ borderTop: '1px solid #1a1a1a', marginTop: '3px', marginBottom: '2rem' }} />
+
+            <h2 style={{
+              fontFamily: DOC, fontSize: '14pt', fontWeight: '700',
+              color: '#1a1a1a', margin: '0 0 1.75rem',
+            }}>
+              Termos-Chave do Texto Original
+            </h2>
+
+            {versos.map((verso, idx) => {
+              const isHebrew = /[֐-׿]/.test(verso.texto ?? '')
+              return (
+                <div key={verso.id} style={{
+                  marginBottom: '1.75rem',
+                  paddingLeft: '1.25rem',
+                  borderLeft: '3px solid #ccc',
+                }}>
+                  {/* Verse label */}
+                  <div style={{
+                    fontFamily: "'Arial', sans-serif",
+                    fontSize: '8pt', fontWeight: '700',
+                    letterSpacing: '0.1em', textTransform: 'uppercase',
+                    color: '#999', marginBottom: '0.5rem',
+                  }}>
+                    {idx + 1}.&ensp;{verso.ref}
+                  </div>
+
+                  {/* Original text */}
+                  {verso.texto && (
+                    <div style={{
+                      fontFamily: DOC,
+                      fontSize: '15pt',
+                      fontWeight: '600',
+                      color: '#1a1a1a',
+                      lineHeight: '1.9',
+                      marginBottom: '0.3rem',
+                      direction: isHebrew ? 'rtl' : 'ltr',
+                      letterSpacing: isHebrew ? '0.04em' : '0.02em',
+                    }}>
+                      {verso.texto}
+                    </div>
+                  )}
+
+                  {/* Transliteration */}
+                  {verso.transliteracao && (
+                    <div style={{
+                      fontFamily: DOC, fontSize: '11pt',
+                      fontStyle: 'italic', color: '#555',
+                      marginBottom: '0.3rem',
+                    }}>
+                      {verso.transliteracao}
+                    </div>
+                  )}
+
+                  {/* Translations */}
+                  {verso.traducao_literal && (
+                    <div style={{ fontFamily: DOC, fontSize: '11pt', color: '#333', marginBottom: '0.2rem' }}>
+                      <span style={{ fontWeight: '700' }}>Tradução literal:&ensp;</span>
+                      {verso.traducao_literal}
+                    </div>
+                  )}
+                  {verso.traducao_ajustada && (
+                    <div style={{ fontFamily: DOC, fontSize: '11pt', color: '#333', marginBottom: '0.2rem' }}>
+                      <span style={{ fontWeight: '700' }}>Tradução ajustada:&ensp;</span>
+                      {verso.traducao_ajustada}
+                    </div>
+                  )}
+
+                  {/* Observations */}
+                  {verso.observacoes && (
+                    <div style={{
+                      fontFamily: DOC, fontSize: '11pt',
+                      fontStyle: 'italic', color: '#555',
+                      marginTop: '0.4rem',
+                      paddingTop: '0.4rem',
+                      borderTop: '1px solid #ebebeb',
+                    }}>
+                      {verso.observacoes}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── AI synthesis ─────────────────────────────────────────────── */}
+        <div style={{ borderTop: '2px solid #1a1a1a' }} />
+        <div style={{ borderTop: '1px solid #1a1a1a', marginTop: '3px', marginBottom: '2rem' }} />
+
+        <div style={{ marginBottom: '1rem' }}>
+          <h2 style={{
+            fontFamily: DOC, fontSize: '14pt', fontWeight: '700',
+            color: '#1a1a1a', margin: '0 0 0.6rem',
+          }}>
+            Síntese Integradora
+          </h2>
+          <p style={{
+            fontFamily: DOC, fontSize: '11pt',
+            color: '#555', lineHeight: '1.7',
+            margin: '0 0 1.1rem', fontStyle: 'italic',
+          }}>
+            Gere uma síntese acadêmica que organiza e relaciona todos os elementos do{' '}
+            {synthesisDef.groupLabel.toLowerCase()}, preparando a transição para a próxima etapa.
+          </p>
+          <button
+            onClick={() => onAskAI(buildSynthesisPrompt(synthesisDef, project, savedSections, groupSections))}
+            style={{
+              background: 'none',
+              border: '1px solid #aaa',
+              borderRadius: '2px',
+              color: '#333',
+              cursor: 'pointer',
+              fontFamily: DOC,
+              fontSize: '11pt',
+              padding: '0.4rem 1.1rem',
+              transition: 'border-color 0.15s, background 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.borderColor = '#555' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#aaa' }}
+          >
+            Gerar síntese com IA →
+          </button>
+        </div>
+
       </div>
 
-      {/* AI synthesis */}
+      {/* ── Next step CTA — outside the document ─────────────────────────── */}
       <div style={{
-        marginTop: '2.5rem',
-        padding: '1.25rem',
-        background: 'var(--surface)',
-        border: '1px solid var(--border-subtle)',
-        borderLeft: '3px solid var(--ai)',
-        borderRadius: '7px',
+        maxWidth: '760px',
+        margin: '2rem auto 0',
+        padding: '1.25rem 1.5rem',
+        background: nextPhaseChange ? 'rgba(124,156,191,0.08)' : 'rgba(184,146,42,0.07)',
+        border: `1px solid ${nextPhaseChange ? 'rgba(124,156,191,0.28)' : 'rgba(184,146,42,0.22)'}`,
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '1.25rem',
       }}>
-        <div style={{
-          fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.08em',
-          textTransform: 'uppercase', color: 'var(--ai)',
-          marginBottom: '0.45rem',
-        }}>
-          Síntese Integradora com IA
+        <div style={{ minWidth: 0 }}>
+          <div style={{
+            fontFamily: "'Arial', sans-serif",
+            fontSize: '0.62rem', fontWeight: '800',
+            letterSpacing: '0.11em', textTransform: 'uppercase',
+            color: nextPhaseChange ? 'var(--ai)' : 'var(--accent)',
+            marginBottom: '0.3rem',
+          }}>
+            {nextPhaseChange ? 'Do texto ao púlpito' : 'Próxima etapa'}
+          </div>
+          <p style={{
+            fontFamily: "'Arial', sans-serif",
+            fontSize: '0.83rem', color: 'var(--text-secondary)',
+            lineHeight: '1.55', margin: 0,
+          }}>
+            {synthesisDef.ctaDescription}
+          </p>
         </div>
-        <p style={{
-          fontSize: '0.84rem', color: 'var(--text-secondary)',
-          lineHeight: '1.7', margin: '0 0 0.85rem',
-        }}>
-          Gere uma síntese acadêmica que organiza e relaciona todos os elementos do{' '}
-          {synthesisDef.groupLabel.toLowerCase()}, preparando a transição para a próxima etapa.
-        </p>
-        <button
-          onClick={() => onAskAI(buildSynthesisPrompt())}
-          style={{
-            background: 'var(--ai-subtle)',
-            border: '1px solid var(--ai)',
-            borderRadius: '6px', color: 'var(--ai)',
-            cursor: 'pointer', fontFamily: 'inherit',
-            fontSize: '0.79rem', fontWeight: '700',
-            padding: '0.48rem 0.95rem',
-            transition: 'background 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(124,156,191,0.18)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'var(--ai-subtle)' }}
-        >
-          Gerar síntese com IA →
-        </button>
-      </div>
-
-      {/* Next step CTA */}
-      <div style={{
-        marginTop: '3rem',
-        padding: '1.6rem',
-        background: nextPhaseChange
-          ? 'linear-gradient(135deg, rgba(124,156,191,0.06), rgba(124,156,191,0.02))'
-          : 'linear-gradient(135deg, rgba(184,146,42,0.06), rgba(184,146,42,0.02))',
-        border: `1px solid ${nextPhaseChange ? 'rgba(124,156,191,0.25)' : 'rgba(184,146,42,0.22)'}`,
-        borderRadius: '8px',
-        textAlign: 'center',
-      }}>
-        <div style={{
-          fontSize: '0.62rem', fontWeight: '800', letterSpacing: '0.12em',
-          textTransform: 'uppercase', color: 'var(--text-muted)',
-          marginBottom: '0.6rem',
-        }}>
-          {nextPhaseChange ? 'Do texto ao púlpito' : 'Próxima etapa'}
-        </div>
-        <p style={{
-          fontSize: '0.87rem', color: 'var(--text-secondary)',
-          lineHeight: '1.65', margin: '0 0 1.15rem',
-          maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto',
-        }}>
-          {synthesisDef.ctaDescription}
-        </p>
         <button
           onClick={() => {
             const firstSection = getSectionsByGroup(nextGroup.id)[0]
             if (firstSection) onNavigate(firstSection.slug)
           }}
           style={{
+            flexShrink: 0,
             background: nextPhaseChange ? 'rgba(124,156,191,0.12)' : 'var(--accent-subtle)',
             border: `1px solid ${nextPhaseChange ? 'var(--ai)' : 'var(--accent)'}`,
-            borderRadius: '7px',
+            borderRadius: '6px',
             color: nextPhaseChange ? 'var(--ai)' : 'var(--accent)',
-            cursor: 'pointer', fontFamily: 'inherit',
-            fontSize: '0.85rem', fontWeight: '700',
-            padding: '0.65rem 1.5rem',
+            cursor: 'pointer',
+            fontFamily: "'Arial', sans-serif",
+            fontSize: '0.82rem', fontWeight: '700',
+            padding: '0.55rem 1.2rem',
             letterSpacing: '0.01em',
+            whiteSpace: 'nowrap',
             transition: 'background 0.15s',
           }}
           onMouseEnter={e => {
@@ -358,6 +470,7 @@ export default function SynthesisView({
           Prosseguir para {nextGroup.label} →
         </button>
       </div>
+
     </div>
   )
 }

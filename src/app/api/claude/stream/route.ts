@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { EXEGESE_SYSTEM_PROMPT } from '@/lib/prompts/exegese-system'
+import { getSectionBySlug } from '@/lib/workspace-sections'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -9,6 +10,37 @@ const anthropic = new Anthropic({
 interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+}
+
+interface OriginalVerseContent {
+  ref?: string
+  texto?: string
+}
+
+async function loadOriginalTextContext(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string | undefined,
+): Promise<string> {
+  if (!projectId) return ''
+
+  const { data } = await supabase
+    .from('sections')
+    .select('content')
+    .eq('project_id', projectId)
+    .eq('slug', 'texto_original')
+    .maybeSingle()
+
+  const content = data?.content as { versos?: OriginalVerseContent[]; passagem?: string } | null
+  if (!content) return ''
+
+  if (Array.isArray(content.versos) && content.versos.length > 0) {
+    return content.versos
+      .filter(verse => verse.texto?.trim())
+      .map(verse => `${verse.ref ?? ''} ${verse.texto}`.trim())
+      .join('\n')
+  }
+
+  return content.passagem?.trim() ?? ''
 }
 
 export async function POST(req: Request) {
@@ -22,7 +54,7 @@ export async function POST(req: Request) {
   const body = await req.json()
   const { messages, project, activeSlug, activeTitle } = body as {
     messages: ChatMessage[]
-    project: { book: string; passage_ref: string; testament: string; original_language: string }
+    project: { id?: string; book: string; passage_ref: string; testament: string; original_language: string }
     activeSlug: string
     activeTitle: string
   }
@@ -31,8 +63,25 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Mensagens inválidas' }, { status: 400 })
   }
 
+  const sectionDef = getSectionBySlug(activeSlug)
+  const modeInstruction = (() => {
+    if (sectionDef?.communicationMode === 'sermao') {
+      return 'Modo ministerial ativo: Sermão. Responda como mentor homilético: argumentativo, persuasivo, cristocêntrico e voltado à proclamação pública.'
+    }
+    if (sectionDef?.communicationMode === 'estudo_biblico') {
+      return 'Modo ministerial ativo: Estudo Bíblico. Responda como mentor didático: pedagógico, explicativo, interativo e voltado à condução de grupo.'
+    }
+    if (sectionDef?.communicationMode === 'devocional') {
+      return 'Modo ministerial ativo: Devocional. Responda como mentor pastoral: contemplativo, sensível, simples e voltado à formação espiritual.'
+    }
+    return 'Modo ativo: Interpretação. Responda com rigor exegético, atenção ao texto bíblico e teologia reformada.'
+  })()
+  const originalTextContext = sectionDef?.group === 'textual' || ['texto_original', '_sintese_textual'].includes(activeSlug)
+    ? await loadOriginalTextContext(supabase, project.id)
+    : ''
+
   // Build context prefix for the current section
-  const contextNote = `[Projeto atual: ${project.book} ${project.passage_ref} (${project.original_language}) | Seção ativa: ${activeTitle}]`
+  const contextNote = `[Projeto atual: ${project.book} ${project.passage_ref} (${project.original_language}) | Seção ativa: ${activeTitle}]\n${modeInstruction}${originalTextContext ? `\n\nTexto original carregado no workspace:\n${originalTextContext}` : ''}`
 
   const systemWithContext = `${EXEGESE_SYSTEM_PROMPT}\n\n---\n${contextNote}`
 

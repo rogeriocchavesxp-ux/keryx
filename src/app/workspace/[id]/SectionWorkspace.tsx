@@ -37,6 +37,13 @@ const MODULE_COLORS: Record<string, string> = {
   pronuntiatio: '#c47c5a',
 }
 
+function modeTheme(mode: SectionDef['communicationMode']): { color: string; bg: string; label: string } {
+  if (mode === 'sermao') return { color: 'var(--ai)', bg: 'rgba(124,156,191,0.08)', label: 'Sermão' }
+  if (mode === 'estudo_biblico') return { color: '#6db8a0', bg: 'rgba(109,184,160,0.08)', label: 'Estudo Bíblico' }
+  if (mode === 'devocional') return { color: '#c9a66b', bg: 'rgba(201,166,107,0.08)', label: 'Devocional' }
+  return { color: 'var(--accent)', bg: 'var(--accent-subtle)', label: 'Exegese' }
+}
+
 export default function SectionWorkspace({
   sectionDef, project, userId, existingSection, onUpdate, onAskAI,
 }: Props) {
@@ -60,12 +67,6 @@ export default function SectionWorkspace({
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestContent = useRef(cardContent)
-
-  useEffect(() => {
-    setCardContent(loadCards())
-    setExpandedCards(new Set([sectionDef.cards[0]?.id]))
-    setSavedAt(null)
-  }, [sectionDef.slug, loadCards])
 
   useEffect(() => { latestContent.current = cardContent }, [cardContent])
 
@@ -118,7 +119,7 @@ export default function SectionWorkspace({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sectionSlug: sectionDef.slug, cardId,
-          project: { book: project.book, passage_ref: project.passage_ref, testament: project.testament, original_language: project.original_language },
+          project: { id: project.id, book: project.book, passage_ref: project.passage_ref, testament: project.testament, original_language: project.original_language },
         }),
       })
       const data = await res.json()
@@ -146,7 +147,7 @@ export default function SectionWorkspace({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sectionSlug: sectionDef.slug,
-          project: { book: project.book, passage_ref: project.passage_ref, testament: project.testament, original_language: project.original_language },
+          project: { id: project.id, book: project.book, passage_ref: project.passage_ref, testament: project.testament, original_language: project.original_language },
         }),
       })
       const data = await res.json()
@@ -169,6 +170,7 @@ export default function SectionWorkspace({
   }
 
   const moduleColor = MODULE_COLORS[sectionDef.module] ?? 'var(--accent)'
+  const theme = modeTheme(sectionDef.communicationMode)
   const hasAnyContent = Object.values(cardContent).some(v => v.trim().length > 0)
   const savedLabel = saving
     ? 'salvando…'
@@ -186,6 +188,21 @@ export default function SectionWorkspace({
         textTransform: 'uppercase', letterSpacing: '0.07em',
         marginBottom: '0.75rem',
       }}>
+        {sectionDef.phase === 'comunicar' && (
+          <>
+            <span style={{
+              color: theme.color,
+              background: theme.bg,
+              border: `1px solid ${theme.color}`,
+              borderRadius: '4px',
+              padding: '0.08rem 0.4rem',
+              fontWeight: '800',
+            }}>
+              {theme.label}
+            </span>
+            <span style={{ color: 'var(--border)' }}>·</span>
+          </>
+        )}
         <span style={{ color: moduleColor, fontWeight: '700' }}>
           {sectionDef.module.charAt(0).toUpperCase() + sectionDef.module.slice(1)}
         </span>
@@ -222,7 +239,12 @@ export default function SectionWorkspace({
       <p style={{
         fontSize: '0.87rem', color: 'var(--text-secondary)',
         lineHeight: '1.8', fontStyle: 'italic',
-        borderLeft: `2px solid ${moduleColor}30`,
+        borderLeft: `2px solid ${sectionDef.phase === 'comunicar' ? theme.color : moduleColor}`,
+        background: sectionDef.phase === 'comunicar' ? theme.bg : 'transparent',
+        borderRadius: sectionDef.phase === 'comunicar' ? '0 6px 6px 0' : 0,
+        paddingTop: sectionDef.phase === 'comunicar' ? '0.75rem' : 0,
+        paddingBottom: sectionDef.phase === 'comunicar' ? '0.75rem' : 0,
+        paddingRight: sectionDef.phase === 'comunicar' ? '0.85rem' : 0,
         paddingLeft: '1rem', marginBottom: '1.5rem',
       }}>
         {sectionDef.objective}

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Project, Section } from '@/types/database'
+import type { OriginalVerse } from '@/lib/original-text'
 
 interface VersoData {
   id: string
@@ -13,6 +14,8 @@ interface VersoData {
   traducao_ajustada: string
   observacoes: string
 }
+
+type FetchState = 'idle' | 'loading' | 'loaded' | 'error'
 
 interface Props {
   project: Project
@@ -41,6 +44,26 @@ function makeVerso(): VersoData {
   }
 }
 
+function makeId(verse: number): string {
+  return `v${verse}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
+function verseToData(verse: OriginalVerse): VersoData {
+  return {
+    id: makeId(verse.verse),
+    ref: `v. ${verse.verse}`,
+    texto: verse.original,
+    transliteracao: verse.transliteration,
+    traducao_literal: verse.userTranslation,
+    traducao_ajustada: '',
+    observacoes: verse.notes,
+  }
+}
+
+function versesToPassage(verses: VersoData[]): string {
+  return verses.map(verse => `${verse.ref} ${verse.texto}`.trim()).join('\n')
+}
+
 const FIELD_LABEL: React.CSSProperties = {
   fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.09em',
   textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem',
@@ -55,24 +78,28 @@ const TEXTAREA_BASE: React.CSSProperties = {
 }
 
 export default function OriginalTextWorkspace({ project, userId, existingSection, onUpdate, onAskAI }: Props) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const init = loadData(existingSection)
 
   const [passagem, setPassagem] = useState(init.passagem)
   const [versos, setVersos] = useState<VersoData[]>(init.versos)
-  const [editingText, setEditingText] = useState(init.passagem.trim() === '')
+  const [editingText, setEditingText] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(init.versos[0]?.id ?? null)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [fetchState, setFetchState] = useState<FetchState>(init.versos.length > 0 ? 'loaded' : 'idle')
+  const [fetchError, setFetchError] = useState('')
 
   const latestP = useRef(passagem)
   const latestV = useRef(versos)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fetchedOnMount = useRef(false)
+  const hasInitialContent = useRef(init.versos.length > 0 || init.passagem.trim().length > 0)
 
   useEffect(() => { latestP.current = passagem }, [passagem])
   useEffect(() => { latestV.current = versos }, [versos])
 
-  const performSave = useCallback(async (p: string, v: VersoData[]) => {
+  async function performSave(p: string, v: VersoData[]) {
     setSaving(true)
     const hasContent = p.trim().length > 0 || v.length > 0
     const payload = {
@@ -91,7 +118,56 @@ export default function OriginalTextWorkspace({ project, userId, existingSection
     }
     setSaving(false)
     setSavedAt(new Date())
-  }, [project.id, userId, existingSection?.id, supabase, onUpdate])
+  }
+
+  async function loadOriginalText(force = false) {
+    if (!force && latestV.current.length > 0) return
+
+    setFetchState('loading')
+    setFetchError('')
+    setEditingText(false)
+
+    try {
+      const response = await fetch('/api/bible/original', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          book: project.book,
+          passageRef: project.passage_ref,
+          testament: project.testament,
+          originalLanguage: project.original_language,
+        }),
+      })
+
+      const data = await response.json() as { verses?: OriginalVerse[]; error?: string }
+      if (!response.ok || !data.verses?.length) {
+        throw new Error(data.error ?? 'Não foi possível carregar o texto original.')
+      }
+
+      const nextVerses = data.verses.map(verseToData)
+      const nextPassage = versesToPassage(nextVerses)
+
+      setVersos(nextVerses)
+      setPassagem(nextPassage)
+      setExpandedId(nextVerses[0]?.id ?? null)
+      latestV.current = nextVerses
+      latestP.current = nextPassage
+      setFetchState('loaded')
+      await performSave(nextPassage, nextVerses)
+    } catch (error) {
+      setFetchState('error')
+      setFetchError(error instanceof Error ? error.message : 'Falha ao buscar texto original.')
+      setEditingText(true)
+    }
+  }
+
+  useEffect(() => {
+    if (fetchedOnMount.current || hasInitialContent.current) return
+    fetchedOnMount.current = true
+    void loadOriginalText()
+    // The workspace is keyed by slug; this mount-only bootstrap avoids re-fetching saved text.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function schedule() {
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -178,23 +254,80 @@ export default function OriginalTextWorkspace({ project, userId, existingSection
           }}>
             {isHebrew ? 'Texto Hebraico' : 'Texto Grego'}
           </div>
-          <button
-            onClick={() => setEditingText(e => !e)}
-            style={{
-              background: 'transparent', border: '1px solid var(--border-subtle)',
-              borderRadius: '4px', color: 'var(--text-muted)',
-              cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: '0.67rem', padding: '0.18rem 0.5rem',
-              transition: 'color 0.15s, border-color 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--border)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
-          >
-            {editingText ? 'Concluir edição' : 'Editar texto ✎'}
-          </button>
+          <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => loadOriginalText(true)}
+              disabled={fetchState === 'loading'}
+              style={{
+                background: fetchState === 'loading' ? 'var(--surface-2)' : 'var(--accent-subtle)',
+                border: `1px solid ${fetchState === 'loading' ? 'var(--border)' : 'var(--accent)'}`,
+                borderRadius: '4px',
+                color: fetchState === 'loading' ? 'var(--text-muted)' : 'var(--accent)',
+                cursor: fetchState === 'loading' ? 'wait' : 'pointer',
+                fontFamily: 'inherit',
+                fontSize: '0.67rem',
+                fontWeight: 700,
+                padding: '0.18rem 0.55rem',
+              }}
+            >
+              {fetchState === 'loading' ? 'Buscando...' : 'Atualizar texto original'}
+            </button>
+            <button
+              onClick={() => setEditingText(e => !e)}
+              style={{
+                background: 'transparent', border: '1px solid var(--border-subtle)',
+                borderRadius: '4px', color: 'var(--text-muted)',
+                cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: '0.67rem', padding: '0.18rem 0.5rem',
+                transition: 'color 0.15s, border-color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--border)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
+            >
+              {editingText ? 'Concluir edição' : 'Editar texto ✎'}
+            </button>
+          </div>
         </div>
 
-        {editingText ? (
+        {fetchState === 'loading' ? (
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              padding: '3.2rem 1.5rem',
+              textAlign: 'center',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            <div style={{ fontSize: '1.5rem', color: 'var(--accent)', opacity: 0.55, marginBottom: '0.65rem' }}>
+              {isHebrew ? 'א' : 'α'}
+            </div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>
+              Buscando texto original...
+            </div>
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+              {project.book} {project.passage_ref} · {isHebrew ? 'Hebraico' : 'Grego'}
+            </div>
+          </div>
+        ) : editingText ? (
+          <>
+          {fetchState === 'error' && (
+            <div style={{
+              background: 'rgba(229,115,115,0.08)',
+              border: '1px solid rgba(229,115,115,0.35)',
+              borderRadius: '7px',
+              color: 'var(--text-secondary)',
+              fontSize: '0.82rem',
+              lineHeight: '1.55',
+              padding: '0.8rem 0.95rem',
+              marginBottom: '0.8rem',
+            }}>
+              Não foi possível buscar o texto original automaticamente. {fetchError}
+              <br />
+              Use o campo abaixo como fallback manual.
+            </div>
+          )}
           <textarea
             value={passagem}
             onChange={e => setP(e.target.value)}
@@ -217,6 +350,7 @@ export default function OriginalTextWorkspace({ project, userId, existingSection
               caretColor: 'var(--accent)',
             }}
           />
+          </>
         ) : passagem.trim() ? (
           /* ── Reading mode: the text dominates ── */
           <div

@@ -1,3 +1,5 @@
+import { COMMUNICATION_SECTIONS } from './communication-sections'
+
 export interface HelpEntry {
   id: string
   titulo: string
@@ -262,7 +264,44 @@ function createHelpEntry(seed: HelpSeed): HelpEntry {
   }
 }
 
+function communicationCategory(module: string): HelpCategory {
+  if (module === 'inventio' || module === 'dispositio') return 'homiletica'
+  if (module === 'elocutio') return 'estilo'
+  if (module === 'memoria') return 'memoria'
+  return 'entrega'
+}
+
+function communicationModeLabel(mode: string | undefined): string {
+  if (mode === 'sermao') return 'sermão'
+  if (mode === 'estudo_biblico') return 'estudo bíblico'
+  if (mode === 'devocional') return 'devocional'
+  return 'produção ministerial'
+}
+
+function createCommunicationHelpEntry(sectionTitle: string, mode: string | undefined, module: string, cardSeed: { id: string; title: string; placeholder: string }): HelpEntry {
+  const modeLabel = communicationModeLabel(mode)
+  const seed: HelpSeed = {
+    id: cardSeed.id,
+    titulo: cardSeed.title,
+    categoria: communicationCategory(module),
+    foco: `${cardSeed.title.toLowerCase()} dentro do fluxo de ${modeLabel}, considerando a seção ${sectionTitle}`,
+    exemplo: `Em Romanos 8.1, esse campo deve ajudar a comunicar a ausência de condenação em Cristo de modo adequado ao formato de ${modeLabel}, seja por proclamação, ensino participativo ou meditação pastoral.`,
+  }
+
+  return {
+    ...createHelpEntry(seed),
+    descricao: `${cardSeed.title} é o campo em que você transforma a exegese em uma decisão concreta para ${modeLabel}. Ele organiza ${cardSeed.placeholder.toLowerCase()} sem perder a conexão com o texto bíblico e com a finalidade pastoral da comunicação.`,
+    ajudaIA: `A IA pode agir como mentora de ${modeLabel}, sugerindo formulações, perguntas, exemplos e ajustes de tom para ${cardSeed.title.toLowerCase()}. Revise a resposta para garantir fidelidade ao texto, linguagem natural e coerência com a exegese já construída.`,
+  }
+}
+
 export const HELP_CONTENT: Record<string, HelpEntry> = HELP_SEEDS.reduce<Record<string, HelpEntry>>((content, seed) => {
   content[seed.id] = createHelpEntry(seed)
   return content
 }, {})
+
+COMMUNICATION_SECTIONS.forEach(section => {
+  section.cards.forEach(cardSeed => {
+    HELP_CONTENT[cardSeed.id] = createCommunicationHelpEntry(section.title, section.communicationMode, section.module, cardSeed)
+  })
+})

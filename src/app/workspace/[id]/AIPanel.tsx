@@ -22,11 +22,14 @@ export default function AIPanel({ project, activeSlug, activeTitle, context, onC
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const streamBufferRef = useRef('')
 
   useEffect(() => {
     if (context) {
-      setInput(context)
-      onClearContext()
+      queueMicrotask(() => {
+        setInput(context)
+        onClearContext()
+      })
     }
   }, [context, onClearContext])
 
@@ -54,6 +57,7 @@ export default function AIPanel({ project, activeSlug, activeTitle, context, onC
         body: JSON.stringify({
           messages: nextMessages,
           project: {
+            id: project.id,
             book: project.book,
             passage_ref: project.passage_ref,
             testament: project.testament,
@@ -76,7 +80,7 @@ export default function AIPanel({ project, activeSlug, activeTitle, context, onC
 
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
-      let full = ''
+      streamBufferRef.current = ''
 
       while (true) {
         const { done, value } = await reader.read()
@@ -90,7 +94,8 @@ export default function AIPanel({ project, activeSlug, activeTitle, context, onC
             try {
               const parsed = JSON.parse(data)
               const delta = parsed.delta?.text ?? ''
-              full += delta
+              streamBufferRef.current += delta
+              const full = streamBufferRef.current
               setMessages(m => {
                 const next = [...m]
                 next[next.length - 1] = { role: 'assistant', content: full }

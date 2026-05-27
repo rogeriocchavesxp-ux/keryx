@@ -28,16 +28,20 @@ interface Props {
 type PhaseId = 'interpretar' | 'comunicar'
 
 interface NavGroup { id: string; label: string }
-interface NavCanon { id: string; label: string; latinNote: string | null; groups: NavGroup[] }
-interface NavPhase { id: PhaseId; roman: string; label: string; color: string; bgActive: string; canons: NavCanon[] }
+interface NavMode { id: string; label: string; subtitle: string; color: string; bgActive: string; groups: NavGroup[] }
+interface NavPhase { id: PhaseId; roman: string; label: string; color: string; bgActive: string; modes: NavMode[] }
 
 const NAV_PHASES: NavPhase[] = [
   {
     id: 'interpretar', roman: 'I', label: 'Interpretar',
     color: 'var(--accent)', bgActive: 'rgba(184,146,42,0.08)',
-    canons: [
+    modes: [
       {
-        id: 'inventio', label: 'Invenção', latinNote: 'Inventio',
+        id: 'interpretar_inventio',
+        label: 'Exegese',
+        subtitle: 'Invenção · Inventio',
+        color: 'var(--accent)',
+        bgActive: 'rgba(184,146,42,0.08)',
         groups: [
           { id: 'contextual', label: 'Estudo Contextual' },
           { id: 'textual',    label: 'Estudo Textual' },
@@ -49,50 +53,62 @@ const NAV_PHASES: NavPhase[] = [
   {
     id: 'comunicar', roman: 'II', label: 'Comunicar',
     color: 'var(--ai)', bgActive: 'rgba(124,156,191,0.08)',
-    canons: [
+    modes: [
       {
-        id: 'dispositio', label: 'Disposição', latinNote: 'Dispositio',
+        id: 'sermao',
+        label: 'Sermão',
+        subtitle: 'Proclamação pública',
+        color: 'var(--ai)',
+        bgActive: 'rgba(124,156,191,0.08)',
         groups: [
-          { id: 'proposicao',   label: 'Ideia e Proposição' },
-          { id: 'estrutura',    label: 'Estrutura do Sermão' },
-          { id: 'encerramento', label: 'Aplicação e Conclusão' },
+          { id: 'sermao_inventio', label: 'Invenção · Inventio' },
+          { id: 'sermao_dispositio', label: 'Disposição · Dispositio' },
+          { id: 'sermao_elocutio', label: 'Elocução · Elocutio' },
+          { id: 'sermao_memoria', label: 'Memória · Memoria' },
+          { id: 'sermao_pronuntiatio', label: 'Entrega · Pronuntiatio' },
+          { id: 'sermao_avaliacao', label: 'Avaliação' },
         ],
       },
       {
-        id: 'elocutio', label: 'Elocução', latinNote: 'Elocutio',
+        id: 'estudo_biblico',
+        label: 'Estudo Bíblico',
+        subtitle: 'Ensino participativo',
+        color: '#6db8a0',
+        bgActive: 'rgba(109,184,160,0.09)',
         groups: [
-          { id: 'vocabulario', label: 'Vocabulário e Clareza' },
-          { id: 'imagens',     label: 'Imagens e Retórica' },
-          { id: 'tom',         label: 'Tom e Voz Pastoral' },
+          { id: 'estudo_inventio', label: 'Invenção · Inventio' },
+          { id: 'estudo_dispositio', label: 'Disposição · Dispositio' },
+          { id: 'estudo_elocutio', label: 'Elocução · Elocutio' },
+          { id: 'estudo_memoria', label: 'Memória · Memoria' },
+          { id: 'estudo_pronuntiatio', label: 'Entrega · Pronuntiatio' },
         ],
       },
       {
-        id: 'memoria', label: 'Memória', latinNote: 'Memoria',
+        id: 'devocional',
+        label: 'Devocional',
+        subtitle: 'Meditação pastoral',
+        color: '#c9a66b',
+        bgActive: 'rgba(201,166,107,0.09)',
         groups: [
-          { id: 'memorizacao', label: 'Internalização' },
-        ],
-      },
-      {
-        id: 'pronuntiatio', label: 'Entrega', latinNote: 'Pronuntiatio',
-        groups: [
-          { id: 'entrega', label: 'Pregação e Entrega' },
-        ],
-      },
-      {
-        id: 'avaliacao_canon', label: 'Avaliação', latinNote: null,
-        groups: [
-          { id: 'avaliacao_pregacao', label: 'Revisão Final' },
+          { id: 'devocional_inventio', label: 'Invenção · Inventio' },
+          { id: 'devocional_dispositio', label: 'Disposição · Dispositio' },
+          { id: 'devocional_elocutio', label: 'Elocução · Elocutio' },
+          { id: 'devocional_memoria', label: 'Memória · Memoria' },
+          { id: 'devocional_pronuntiatio', label: 'Entrega · Pronuntiatio' },
         ],
       },
     ],
   },
 ]
 
+const NAV_GROUP_IDS = new Set(NAV_PHASES.flatMap(phase => phase.modes.flatMap(mode => mode.groups.map(group => group.id))))
+
 // ── Helpers de navegação ───────────────────────────────────────────────────
 
 function getPhaseFor(slug: string): PhaseId {
   if (isSynthesisSlug(slug)) return 'interpretar'
   const sec = getSectionBySlug(slug)
+  if (sec?.phase) return sec.phase
   return sec?.module === 'inventio' ? 'interpretar' : 'comunicar'
 }
 
@@ -105,8 +121,8 @@ function getCanonFor(slug: string): string | undefined {
   const groupId = getGroupFor(slug)
   if (!groupId) return undefined
   for (const phase of NAV_PHASES) {
-    for (const canon of phase.canons) {
-      if (canon.groups.some(g => g.id === groupId)) return canon.id
+    for (const mode of phase.modes) {
+      if (mode.groups.some(g => g.id === groupId)) return mode.id
     }
   }
   return undefined
@@ -125,7 +141,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   const [sections, setSections] = useState<Section[]>(initialSections)
   const [activeSlug, setActiveSlug] = useState('contexto_historico')
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(() => new Set(['interpretar']))
-  const [expandedCanons, setExpandedCanons] = useState<Set<string>>(() => new Set(['inventio']))
+  const [expandedCanons, setExpandedCanons] = useState<Set<string>>(() => new Set(['interpretar_inventio', 'sermao']))
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(['contextual']))
   const [aiOpen, setAiOpen] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
@@ -143,15 +159,30 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   }, [])
 
   function togglePhase(id: string) {
-    setExpandedPhases(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setExpandedPhases(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   function toggleCanon(id: string) {
-    setExpandedCanons(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setExpandedCanons(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   function toggleGroup(id: string) {
-    setExpandedGroups(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   function navigate(slug: string) {
@@ -174,8 +205,9 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
     }
   }
 
-  const totalSecs = WORKSPACE_SECTIONS.length
-  const doneSecs = WORKSPACE_SECTIONS.filter(sd => {
+  const navigableSections = WORKSPACE_SECTIONS.filter(sd => NAV_GROUP_IDS.has(sd.group))
+  const totalSecs = navigableSections.length
+  const doneSecs = navigableSections.filter(sd => {
     const s = sections.find(sec => sec.slug === sd.slug)
     return s?.status === 'draft' || s?.status === 'reviewed'
   }).length
@@ -301,51 +333,49 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                   </div>
                 </button>
 
-                {/* Canons */}
+                {/* Modes */}
                 {phaseOpen && (
                   <div style={{ paddingBottom: '0.4rem' }}>
-                    {phase.canons.map((canon, canonIdx) => {
-                      const canonOpen = expandedCanons.has(canon.id)
+                    {phase.modes.map((mode, modeIdx) => {
+                      const modeOpen = expandedCanons.has(mode.id)
 
                       return (
-                        <div key={canon.id}>
+                        <div key={mode.id}>
 
-                          {/* Canon header */}
+                          {/* Mode header */}
                           <button
-                            onClick={() => toggleCanon(canon.id)}
+                            onClick={() => toggleCanon(mode.id)}
                             style={{
                               width: '100%', border: 'none', cursor: 'pointer',
                               background: 'transparent', textAlign: 'left',
                               padding: '0.4rem 0.6rem 0.35rem 0.8rem',
-                              borderTop: canonIdx > 0 ? '1px solid var(--border-subtle)' : 'none',
+                              borderTop: modeIdx > 0 ? '1px solid var(--border-subtle)' : 'none',
                               display: 'flex', alignItems: 'flex-start', gap: '0.3rem',
                             }}
                           >
-                            <span style={{ fontSize: '0.48rem', color: phase.color, opacity: 0.6, flexShrink: 0, marginTop: '0.22rem' }}>
-                              {canonOpen ? '▾' : '▸'}
+                            <span style={{ fontSize: '0.48rem', color: mode.color, opacity: 0.75, flexShrink: 0, marginTop: '0.22rem' }}>
+                              {modeOpen ? '▾' : '▸'}
                             </span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
                                 fontSize: '0.74rem', fontWeight: '600',
-                                color: phase.color, lineHeight: '1.2',
+                                color: mode.color, lineHeight: '1.2',
                               }}>
-                                {canon.label}
+                                {mode.label}
                               </div>
-                              {canon.latinNote && (
-                                <div style={{
-                                  fontSize: '0.59rem', color: 'var(--text-muted)',
-                                  fontStyle: 'italic', lineHeight: '1.2', marginTop: '0.08rem',
-                                }}>
-                                  {canon.latinNote}
-                                </div>
-                              )}
+                              <div style={{
+                                fontSize: '0.59rem', color: 'var(--text-muted)',
+                                fontStyle: 'italic', lineHeight: '1.2', marginTop: '0.08rem',
+                              }}>
+                                {mode.subtitle}
+                              </div>
                             </div>
                           </button>
 
                           {/* Groups */}
-                          {canonOpen && (
+                          {modeOpen && (
                             <div style={{ paddingBottom: '0.2rem' }}>
-                              {canon.groups.map(group => {
+                              {mode.groups.map(group => {
                                 const groupOpen = expandedGroups.has(group.id)
                                 const secs = getSectionsByGroup(group.id)
                                 if (secs.length === 0) return null
@@ -395,8 +425,8 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                           onClick={() => navigate(sd.slug)}
                                           style={{
                                             width: '100%', border: 'none', fontFamily: 'inherit',
-                                            background: isActive ? phase.bgActive : 'transparent',
-                                            borderLeft: `2px solid ${isActive ? phase.color : 'transparent'}`,
+                                            background: isActive ? mode.bgActive : 'transparent',
+                                            borderLeft: `2px solid ${isActive ? mode.color : 'transparent'}`,
                                             padding: '0.24rem 0.4rem 0.24rem 1.3rem',
                                             display: 'flex', alignItems: 'center', gap: '0.36rem',
                                             cursor: 'pointer', textAlign: 'left',
@@ -412,7 +442,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                           }} />
                                           <span style={{
                                             fontSize: '0.71rem', lineHeight: '1.3',
-                                            color: isActive ? phase.color : 'var(--text-secondary)',
+                                            color: isActive ? mode.color : 'var(--text-secondary)',
                                             fontWeight: isActive ? '500' : '400',
                                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                           }}>
@@ -432,8 +462,8 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                           onClick={() => navigate(syn.slug)}
                                           style={{
                                             width: '100%', border: 'none', fontFamily: 'inherit',
-                                            background: isSynActive ? phase.bgActive : 'transparent',
-                                            borderLeft: `2px solid ${isSynActive ? phase.color : 'var(--border-subtle)'}`,
+                                            background: isSynActive ? mode.bgActive : 'transparent',
+                                            borderLeft: `2px solid ${isSynActive ? mode.color : 'var(--border-subtle)'}`,
                                             padding: '0.24rem 0.4rem 0.24rem 1.3rem',
                                             display: 'flex', alignItems: 'center', gap: '0.36rem',
                                             cursor: 'pointer', textAlign: 'left',
@@ -445,11 +475,11 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                         >
                                           <span style={{
                                             width: '4px', height: '2px', borderRadius: '1px', flexShrink: 0,
-                                            background: isSynActive ? phase.color : 'var(--border)',
+                                            background: isSynActive ? mode.color : 'var(--border)',
                                           }} />
                                           <span style={{
                                             fontSize: '0.69rem', lineHeight: '1.3',
-                                            color: isSynActive ? phase.color : 'var(--text-muted)',
+                                            color: isSynActive ? mode.color : 'var(--text-muted)',
                                             fontStyle: 'italic', flex: 1,
                                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                           }}>

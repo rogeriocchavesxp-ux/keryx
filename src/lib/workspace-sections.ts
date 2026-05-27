@@ -1,3 +1,5 @@
+import { COMMUNICATION_SECTIONS } from './communication-sections'
+
 export interface CardDef {
   id: string
   title: string
@@ -9,13 +11,10 @@ export interface SectionDef {
   slug: string
   title: string
   shortTitle: string
+  phase?: 'interpretar' | 'comunicar'
+  communicationMode?: 'sermao' | 'estudo_biblico' | 'devocional'
   module: 'inventio' | 'dispositio' | 'elocutio' | 'memoria' | 'pronuntiatio'
-  group:
-    | 'contextual' | 'textual' | 'teologico'
-    | 'proposicao' | 'estrutura' | 'encerramento'
-    | 'vocabulario' | 'imagens' | 'tom'
-    | 'memorizacao'
-    | 'entrega' | 'avaliacao_pregacao'
+  group: string
   groupLabel: string
   order: number
   objective: string
@@ -1199,6 +1198,7 @@ const PRONUNTIATIO_SECTIONS: SectionDef[] = [
 ]
 
 WORKSPACE_SECTIONS.push(...PRONUNTIATIO_SECTIONS)
+WORKSPACE_SECTIONS.push(...COMMUNICATION_SECTIONS)
 
 export const INVENTIO_GROUPS = [
   { id: 'contextual', label: 'Estudo Contextual' },
@@ -1274,7 +1274,7 @@ export const SYNTHESIS_DEFS: Record<string, SynthesisDef> = {
     shortTitle: 'Síntese',
     groupId: 'teologico',
     groupLabel: 'Estudo Teológico',
-    nextGroup: { id: 'proposicao', label: 'Construção do Sermão', phaseId: 'comunicar' },
+    nextGroup: { id: 'sermao_inventio', label: 'Sermão', phaseId: 'comunicar' },
     ctaDescription: 'O estudo exegético está consolidado. É hora de construir o sermão — transformar exegese em proclamação fiel.',
   },
 }

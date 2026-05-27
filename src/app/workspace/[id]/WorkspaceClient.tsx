@@ -74,7 +74,7 @@ const NAV_PHASES: NavPhase[] = [
     ],
   },
   {
-    id: 'comunicar', roman: 'III', label: 'Comunicar',
+    id: 'comunicar', roman: 'III', label: 'Produzir',
     color: 'var(--ai)', bgActive: 'rgba(124,156,191,0.08)',
     modes: [
       {
@@ -576,15 +576,19 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                 const isUtilityGroup = isToolSlug(group.id) || group.id === 'colagens'
                                 const secs = isUtilityGroup ? [] : getSectionsByGroup(group.id)
                                 if (secs.length === 0 && !isUtilityGroup) return null
-                                const { done, total } = groupProgress(group.id)
+                                const isSingleSection = !isUtilityGroup && secs.length === 1 && !SYNTHESIS_DEFS[group.id]
+                                const isDirect = isUtilityGroup || isSingleSection
                                 const tool = getToolAreaBySlug(group.id)
+                                const directSlug = isSingleSection ? secs[0].slug : (tool?.slug ?? group.id)
+                                const directLabel = isSingleSection ? secs[0].shortTitle : group.label
+                                const { done, total } = groupProgress(group.id)
 
                                 return (
                                   <div key={group.id}>
 
                                     {/* Group toggle */}
                                     <button
-                                      onClick={() => isUtilityGroup ? navigate(tool?.slug ?? group.id) : toggleGroup(group.id)}
+                                      onClick={() => isDirect ? navigate(directSlug) : toggleGroup(group.id)}
                                       style={{
                                         width: '100%', background: 'transparent', border: 'none',
                                         padding: '0.3rem 0.55rem 0.28rem 1.1rem',
@@ -593,16 +597,16 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                       }}
                                     >
                                       <span style={{ fontSize: '0.46rem', color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }}>
-                                        {isUtilityGroup ? '•' : groupOpen ? '▾' : '▸'}
+                                        {isDirect ? '•' : groupOpen ? '▾' : '▸'}
                                       </span>
                                       <span style={{
                                         fontSize: '0.67rem', fontWeight: '500',
-                                        color: activeSlug === (tool?.slug ?? group.id) ? mode.color : 'var(--text-secondary)', flex: 1, lineHeight: '1.3',
+                                        color: activeSlug === directSlug ? mode.color : 'var(--text-secondary)', flex: 1, lineHeight: '1.3',
                                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                       }}>
-                                        {group.label}
+                                        {directLabel}
                                       </span>
-                                      {!isUtilityGroup && done > 0 && (
+                                      {!isDirect && done > 0 && (
                                         <span style={{
                                           fontSize: '0.56rem', flexShrink: 0,
                                           color: done === total ? 'var(--success)' : 'var(--text-muted)',
@@ -613,7 +617,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                       )}
                                     </button>
 
-                                    {isUtilityGroup && activeSlug === (tool?.slug ?? group.id) && (
+                                    {isDirect && activeSlug === directSlug && (
                                       <div style={{
                                         margin: '0.1rem 0.7rem 0.3rem 1.55rem',
                                         height: '2px',
@@ -624,7 +628,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                     )}
 
                                     {/* Section items */}
-                                    {!isUtilityGroup && groupOpen && secs.map(sd => {
+                                    {!isDirect && groupOpen && secs.map(sd => {
                                       const sec = sections.find(s => s.slug === sd.slug)
                                       const isActive = sd.slug === activeSlug
                                       return (
@@ -661,7 +665,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                     })}
 
                                     {/* Synthesis item */}
-                                    {!isUtilityGroup && groupOpen && (() => {
+                                    {!isDirect && groupOpen && (() => {
                                       const syn = SYNTHESIS_DEFS[group.id]
                                       if (!syn) return null
                                       const isSynActive = activeSlug === syn.slug

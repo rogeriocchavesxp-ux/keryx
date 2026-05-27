@@ -28,7 +28,7 @@ interface Props {
 
 // ── Tipos de navegação ─────────────────────────────────────────────────────
 
-type PhaseId = 'interpretar' | 'comunicar' | 'ferramentas' | 'colagens'
+type PhaseId = 'preparar' | 'inventio' | 'dispositio' | 'elocutio' | 'memoria' | 'pronuntiatio' | 'ferramentas' | 'colagens'
 
 interface NavGroup { id: string; label: string }
 interface NavMode { id: string; label: string; subtitle: string; color: string; bgActive: string; groups: NavGroup[] }
@@ -36,13 +36,32 @@ interface NavPhase { id: PhaseId; roman: string; label: string; color: string; b
 
 const NAV_PHASES: NavPhase[] = [
   {
-    id: 'interpretar', roman: 'I', label: 'Interpretar',
+    id: 'preparar', roman: 'I', label: 'Preparar',
+    color: '#c9a66b', bgActive: 'rgba(201,166,107,0.08)',
+    modes: [
+      {
+        id: 'preparar_imersao',
+        label: 'Imersão',
+        subtitle: 'Piedade e assimilação',
+        color: '#c9a66b',
+        bgActive: 'rgba(201,166,107,0.08)',
+        groups: [
+          { id: 'preparar_espiritual', label: 'Preparação Espiritual' },
+          { id: 'preparar_assimilacao', label: 'Leia e Assimile' },
+          { id: 'preparar_impressoes', label: 'Primeiras Impressões' },
+          { id: 'preparar_visao_geral', label: 'Visão Geral' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'inventio', roman: 'II', label: 'Inventio',
     color: 'var(--accent)', bgActive: 'rgba(184,146,42,0.08)',
     modes: [
       {
         id: 'interpretar_inventio',
         label: 'Exegese',
-        subtitle: 'Invenção · Inventio',
+        subtitle: 'Descobrir o significado',
         color: 'var(--accent)',
         bgActive: 'rgba(184,146,42,0.08)',
         groups: [
@@ -51,59 +70,157 @@ const NAV_PHASES: NavPhase[] = [
           { id: 'teologico',  label: 'Estudo Teológico' },
         ],
       },
+      {
+        id: 'ministerial_inventio',
+        label: 'Produção',
+        subtitle: 'Definir mensagem',
+        color: 'var(--accent)',
+        bgActive: 'rgba(184,146,42,0.08)',
+        groups: [
+          { id: 'sermao_inventio', label: 'Sermão' },
+          { id: 'estudo_inventio', label: 'Estudo Bíblico' },
+          { id: 'devocional_inventio', label: 'Devocional' },
+        ],
+      },
     ],
   },
   {
-    id: 'comunicar', roman: 'II', label: 'Comunicar',
+    id: 'dispositio', roman: 'III', label: 'Dispositio',
     color: 'var(--ai)', bgActive: 'rgba(124,156,191,0.08)',
     modes: [
       {
         id: 'sermao',
         label: 'Sermão',
-        subtitle: 'Proclamação pública',
+        subtitle: 'Organizar o sermão',
         color: 'var(--ai)',
         bgActive: 'rgba(124,156,191,0.08)',
         groups: [
-          { id: 'sermao_inventio', label: 'Invenção · Inventio' },
           { id: 'sermao_dispositio', label: 'Disposição · Dispositio' },
-          { id: 'sermao_elocutio', label: 'Elocução · Elocutio' },
-          { id: 'sermao_memoria', label: 'Memória · Memoria' },
-          { id: 'sermao_pronuntiatio', label: 'Entrega · Pronuntiatio' },
-          { id: 'sermao_avaliacao', label: 'Avaliação' },
         ],
       },
       {
         id: 'estudo_biblico',
         label: 'Estudo Bíblico',
-        subtitle: 'Ensino participativo',
+        subtitle: 'Organizar ensino',
         color: '#6db8a0',
         bgActive: 'rgba(109,184,160,0.09)',
         groups: [
-          { id: 'estudo_inventio', label: 'Invenção · Inventio' },
           { id: 'estudo_dispositio', label: 'Disposição · Dispositio' },
-          { id: 'estudo_elocutio', label: 'Elocução · Elocutio' },
-          { id: 'estudo_memoria', label: 'Memória · Memoria' },
-          { id: 'estudo_pronuntiatio', label: 'Entrega · Pronuntiatio' },
         ],
       },
       {
         id: 'devocional',
         label: 'Devocional',
-        subtitle: 'Meditação pastoral',
+        subtitle: 'Fluxo espiritual',
         color: '#c9a66b',
         bgActive: 'rgba(201,166,107,0.09)',
         groups: [
-          { id: 'devocional_inventio', label: 'Invenção · Inventio' },
           { id: 'devocional_dispositio', label: 'Disposição · Dispositio' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'elocutio', roman: 'IV', label: 'Elocutio',
+    color: '#9b7ec8', bgActive: 'rgba(155,126,200,0.08)',
+    modes: [
+      {
+        id: 'sermao_elocutio_mode',
+        label: 'Sermão',
+        subtitle: 'Refinar comunicação',
+        color: '#9b7ec8',
+        bgActive: 'rgba(155,126,200,0.08)',
+        groups: [{ id: 'sermao_elocutio', label: 'Elocução · Elocutio' }],
+      },
+      {
+        id: 'estudo_elocutio_mode',
+        label: 'Estudo Bíblico',
+        subtitle: 'Clareza didática',
+        color: '#9b7ec8',
+        bgActive: 'rgba(155,126,200,0.08)',
+        groups: [{ id: 'estudo_elocutio', label: 'Elocução · Elocutio' }],
+      },
+      {
+        id: 'devocional_elocutio_mode',
+        label: 'Devocional',
+        subtitle: 'Linguagem contemplativa',
+        color: '#9b7ec8',
+        bgActive: 'rgba(155,126,200,0.08)',
+        groups: [
           { id: 'devocional_elocutio', label: 'Elocução · Elocutio' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'memoria', roman: 'V', label: 'Memoria',
+    color: '#6db8a0', bgActive: 'rgba(109,184,160,0.08)',
+    modes: [
+      {
+        id: 'sermao_memoria_mode',
+        label: 'Sermão',
+        subtitle: 'Internalizar',
+        color: '#6db8a0',
+        bgActive: 'rgba(109,184,160,0.08)',
+        groups: [{ id: 'sermao_memoria', label: 'Memória · Memoria' }],
+      },
+      {
+        id: 'estudo_memoria_mode',
+        label: 'Estudo Bíblico',
+        subtitle: 'Fixação',
+        color: '#6db8a0',
+        bgActive: 'rgba(109,184,160,0.08)',
+        groups: [{ id: 'estudo_memoria', label: 'Memória · Memoria' }],
+      },
+      {
+        id: 'devocional_memoria_mode',
+        label: 'Devocional',
+        subtitle: 'Internalização espiritual',
+        color: '#6db8a0',
+        bgActive: 'rgba(109,184,160,0.08)',
+        groups: [
           { id: 'devocional_memoria', label: 'Memória · Memoria' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'pronuntiatio', roman: 'VI', label: 'Pronuntiatio',
+    color: '#c47c5a', bgActive: 'rgba(196,124,90,0.08)',
+    modes: [
+      {
+        id: 'sermao_pronuntiatio_mode',
+        label: 'Sermão',
+        subtitle: 'Proclamar',
+        color: '#c47c5a',
+        bgActive: 'rgba(196,124,90,0.08)',
+        groups: [
+          { id: 'sermao_pronuntiatio', label: 'Entrega · Pronuntiatio' },
+          { id: 'sermao_avaliacao', label: 'Avaliação' },
+        ],
+      },
+      {
+        id: 'estudo_pronuntiatio_mode',
+        label: 'Estudo Bíblico',
+        subtitle: 'Conduzir grupo',
+        color: '#c47c5a',
+        bgActive: 'rgba(196,124,90,0.08)',
+        groups: [{ id: 'estudo_pronuntiatio', label: 'Entrega · Pronuntiatio' }],
+      },
+      {
+        id: 'devocional_pronuntiatio_mode',
+        label: 'Devocional',
+        subtitle: 'Leitura contemplativa',
+        color: '#c47c5a',
+        bgActive: 'rgba(196,124,90,0.08)',
+        groups: [
           { id: 'devocional_pronuntiatio', label: 'Entrega · Pronuntiatio' },
         ],
       },
     ],
   },
   {
-    id: 'ferramentas', roman: 'III', label: 'Ferramentas',
+    id: 'ferramentas', roman: 'VII', label: 'Ferramentas',
     color: '#9b9488', bgActive: 'rgba(155,148,136,0.08)',
     modes: [
       {
@@ -117,7 +234,7 @@ const NAV_PHASES: NavPhase[] = [
     ],
   },
   {
-    id: 'colagens', roman: 'IV', label: 'Colagens',
+    id: 'colagens', roman: 'VIII', label: 'Colagens',
     color: '#9b7ec8', bgActive: 'rgba(155,126,200,0.08)',
     modes: [
       {
@@ -139,10 +256,15 @@ const NAV_GROUP_IDS = new Set(NAV_PHASES.flatMap(phase => phase.modes.flatMap(mo
 function getPhaseFor(slug: string): PhaseId {
   if (slug === 'colagens') return 'colagens'
   if (isToolSlug(slug)) return 'ferramentas'
-  if (isSynthesisSlug(slug)) return 'interpretar'
+  if (isSynthesisSlug(slug)) return 'inventio'
   const sec = getSectionBySlug(slug)
-  if (sec?.phase) return sec.phase
-  return sec?.module === 'inventio' ? 'interpretar' : 'comunicar'
+  if (sec?.phase === 'preparar') return 'preparar'
+  if (sec?.module === 'inventio') return 'inventio'
+  if (sec?.module === 'dispositio') return 'dispositio'
+  if (sec?.module === 'elocutio') return 'elocutio'
+  if (sec?.module === 'memoria') return 'memoria'
+  if (sec?.module === 'pronuntiatio') return 'pronuntiatio'
+  return 'inventio'
 }
 
 function getGroupFor(slug: string): string | undefined {
@@ -179,10 +301,10 @@ function toolProgress(groupId: string): { done: number; total: number } {
 export default function WorkspaceClient({ user, project, initialSections }: Props) {
   const router = useRouter()
   const [sections, setSections] = useState<Section[]>(initialSections)
-  const [activeSlug, setActiveSlug] = useState('contexto_historico')
-  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(() => new Set(['interpretar', 'ferramentas']))
-  const [expandedCanons, setExpandedCanons] = useState<Set<string>>(() => new Set(['interpretar_inventio', 'sermao', 'ferramentas_biblioteca']))
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(['contextual']))
+  const [activeSlug, setActiveSlug] = useState('preparacao_espiritual')
+  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(() => new Set(['preparar', 'inventio', 'ferramentas']))
+  const [expandedCanons, setExpandedCanons] = useState<Set<string>>(() => new Set(['preparar_imersao', 'interpretar_inventio', 'ferramentas_biblioteca']))
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(['preparar_espiritual']))
   const [aiOpen, setAiOpen] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
 
@@ -236,6 +358,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   }
 
   function groupProgress(groupId: string) {
+    if (groupId === 'colagens') return toolProgress(groupId)
     if (isToolSlug(groupId)) return toolProgress(groupId)
     const gs = getSectionsByGroup(groupId)
     return {

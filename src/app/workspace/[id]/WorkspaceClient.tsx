@@ -62,7 +62,7 @@ const NAV_PHASES: NavPhase[] = [
       {
         id: 'interpretar_inventio',
         label: 'Exegese',
-        subtitle: 'Inventio · Descobrir o significado',
+        subtitle: 'Descobrir o significado',
         color: 'var(--accent)',
         bgActive: 'rgba(184,146,42,0.08)',
         groups: [
@@ -84,10 +84,10 @@ const NAV_PHASES: NavPhase[] = [
         color: 'var(--ai)',
         bgActive: 'rgba(124,156,191,0.08)',
         groups: [
-          { id: 'sermao_dispositio',   label: 'Dispositio' },
-          { id: 'sermao_elocutio',     label: 'Elocutio' },
-          { id: 'sermao_memoria',      label: 'Memoria' },
-          { id: 'sermao_pronuntiatio', label: 'Pronuntiatio' },
+          { id: 'sermao_dispositio',   label: 'Estrutura' },
+          { id: 'sermao_elocutio',     label: 'Linguagem' },
+          { id: 'sermao_memoria',      label: 'Internalização' },
+          { id: 'sermao_pronuntiatio', label: 'Execução da Pregação' },
         ],
       },
       {
@@ -97,10 +97,10 @@ const NAV_PHASES: NavPhase[] = [
         color: '#6db8a0',
         bgActive: 'rgba(109,184,160,0.09)',
         groups: [
-          { id: 'estudo_dispositio',   label: 'Dispositio' },
-          { id: 'estudo_elocutio',     label: 'Elocutio' },
-          { id: 'estudo_memoria',      label: 'Memoria' },
-          { id: 'estudo_pronuntiatio', label: 'Pronuntiatio' },
+          { id: 'estudo_dispositio',   label: 'Estrutura' },
+          { id: 'estudo_elocutio',     label: 'Linguagem' },
+          { id: 'estudo_memoria',      label: 'Internalização' },
+          { id: 'estudo_pronuntiatio', label: 'Execução da Pregação' },
         ],
       },
       {
@@ -110,10 +110,10 @@ const NAV_PHASES: NavPhase[] = [
         color: '#c9a66b',
         bgActive: 'rgba(201,166,107,0.09)',
         groups: [
-          { id: 'devocional_dispositio',   label: 'Dispositio' },
-          { id: 'devocional_elocutio',     label: 'Elocutio' },
-          { id: 'devocional_memoria',      label: 'Memoria' },
-          { id: 'devocional_pronuntiatio', label: 'Pronuntiatio' },
+          { id: 'devocional_dispositio',   label: 'Estrutura' },
+          { id: 'devocional_elocutio',     label: 'Linguagem' },
+          { id: 'devocional_memoria',      label: 'Internalização' },
+          { id: 'devocional_pronuntiatio', label: 'Execução da Pregação' },
         ],
       },
     ],

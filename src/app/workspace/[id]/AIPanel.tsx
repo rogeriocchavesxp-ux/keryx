@@ -272,6 +272,15 @@ export default function AIPanel({ project, activeSlug, activeTitle, context, onC
 
 function quickPrompts(slug: string, project: Project): string[] {
   const ref = `${project.book} ${project.passage_ref}`
+  if (slug === 'sermao_dispositio') {
+    return [
+      `Sugira divisões homiléticas para ${ref} a partir da síntese exegética e da preparação inicial.`,
+      'Transforme a teologia central da passagem em aplicações pastorais específicas.',
+      'Avalie se a estrutura do sermão progride organicamente da exegese.',
+      'Crie transições que conectem observações exegéticas aos pontos do sermão.',
+    ]
+  }
+
   if (slug === 'colagens') {
     return [
       `Sugira conexões entre minhas colagens e ${ref}.`,

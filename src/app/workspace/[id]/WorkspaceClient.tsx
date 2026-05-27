@@ -18,6 +18,7 @@ import SynthesisView from './SynthesisView'
 import OriginalTextWorkspace from './OriginalTextWorkspace'
 import ToolsWorkspace from './ToolsWorkspace'
 import CollagesWorkspace from './CollagesWorkspace'
+import SermonBuilderWorkspace from './SermonBuilderWorkspace'
 import LiveReferencePanel from './LiveReferencePanel'
 import AIPanel from './AIPanel'
 
@@ -234,6 +235,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [referenceCollapsed, setReferenceCollapsed] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
+  const [sideBySide, setSideBySide] = useState(false)
 
   const sidebarWidthRef = useRef(176)
   const referenceWidthRef = useRef(280)
@@ -423,6 +425,24 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
             }} />
           </div>
         </div>
+
+        <button
+          onClick={() => setSideBySide(o => !o)}
+          title="Mostrar exegese e trabalho lado a lado"
+          style={{
+            marginLeft: '0.5rem', flexShrink: 0,
+            background: sideBySide ? 'rgba(255,255,255,0.06)' : 'transparent',
+            border: `1px solid ${sideBySide ? 'var(--border)' : 'var(--border-subtle)'}`,
+            color: sideBySide ? 'var(--text-secondary)' : 'var(--text-muted)',
+            borderRadius: '5px', padding: '0.2rem 0.55rem',
+            fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.04em',
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { if (!sideBySide) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
+          onMouseLeave={e => { if (!sideBySide) { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-muted)' } }}
+        >
+          ⊞ Lado a Lado
+        </button>
 
         <button
           onClick={() => setFocusMode(o => !o)}
@@ -723,7 +743,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
 
         {/* ── Content + AI panel ───────────────────────────────────────── */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', overflow: 'hidden' }}>
-          {activeSlug === 'sermao_dispositio' && !focusMode && (
+          {sideBySide && !focusMode && (
             <>
               {referenceCollapsed ? (
                 <div
@@ -787,6 +807,15 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
               />
             ) : activeSlug === 'texto_original' ? (
               <OriginalTextWorkspace
+                key={activeSlug}
+                project={project}
+                userId={user.id}
+                existingSection={activeSection}
+                onUpdate={handleSectionUpdate}
+                onAskAI={prompt => { setAiPrompt(prompt); setAiOpen(true) }}
+              />
+            ) : activeSlug === 'sermao_dispositio' ? (
+              <SermonBuilderWorkspace
                 key={activeSlug}
                 project={project}
                 userId={user.id}

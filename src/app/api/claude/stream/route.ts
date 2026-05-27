@@ -67,6 +67,9 @@ export async function POST(req: Request) {
   const sectionDef = getSectionBySlug(activeSlug)
   const toolArea = getToolAreaBySlug(activeSlug)
   const modeInstruction = (() => {
+    if (activeSlug === 'sermao_dispositio') {
+      return 'Modo ativo: Referência Viva no Sermão · Dispositio. Responda como mentor homilético que constrói o sermão olhando continuamente para Preparar, síntese exegética, estrutura literária, teologia bíblica e colagens. Transforme observações em divisões, aplicações, introduções, transições, clímax e conclusão sem separar o sermão da exegese.'
+    }
     if (sectionDef?.phase === 'preparar') {
       return 'Macroseção ativa: Preparar. Responda como mentor pastoral, guia devocional e orientador metodológico. Evite tecnicismo excessivo, gramática pesada e análise acadêmica imediata. Priorize assimilação, contemplação, observação, oração, leitura lenta e preparação pastoral.'
     }

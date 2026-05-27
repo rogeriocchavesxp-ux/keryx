@@ -12,9 +12,11 @@ import {
   isSynthesisSlug,
   getSynthesisBySlug,
 } from '@/lib/workspace-sections'
+import { TOOL_AREAS, getToolAreaBySlug, isToolSlug } from '@/lib/tools-content'
 import SectionWorkspace from './SectionWorkspace'
 import SynthesisView from './SynthesisView'
 import OriginalTextWorkspace from './OriginalTextWorkspace'
+import ToolsWorkspace from './ToolsWorkspace'
 import AIPanel from './AIPanel'
 
 interface Props {
@@ -25,7 +27,7 @@ interface Props {
 
 // ── Tipos de navegação ─────────────────────────────────────────────────────
 
-type PhaseId = 'interpretar' | 'comunicar'
+type PhaseId = 'interpretar' | 'comunicar' | 'ferramentas'
 
 interface NavGroup { id: string; label: string }
 interface NavMode { id: string; label: string; subtitle: string; color: string; bgActive: string; groups: NavGroup[] }
@@ -99,6 +101,20 @@ const NAV_PHASES: NavPhase[] = [
       },
     ],
   },
+  {
+    id: 'ferramentas', roman: 'III', label: 'Ferramentas',
+    color: '#9b9488', bgActive: 'rgba(155,148,136,0.08)',
+    modes: [
+      {
+        id: 'ferramentas_biblioteca',
+        label: 'Pesquisa',
+        subtitle: 'Biblioteca e assistente',
+        color: '#9b9488',
+        bgActive: 'rgba(155,148,136,0.08)',
+        groups: TOOL_AREAS.map(area => ({ id: area.slug, label: area.shortTitle })),
+      },
+    ],
+  },
 ]
 
 const NAV_GROUP_IDS = new Set(NAV_PHASES.flatMap(phase => phase.modes.flatMap(mode => mode.groups.map(group => group.id))))
@@ -106,6 +122,7 @@ const NAV_GROUP_IDS = new Set(NAV_PHASES.flatMap(phase => phase.modes.flatMap(mo
 // ── Helpers de navegação ───────────────────────────────────────────────────
 
 function getPhaseFor(slug: string): PhaseId {
+  if (isToolSlug(slug)) return 'ferramentas'
   if (isSynthesisSlug(slug)) return 'interpretar'
   const sec = getSectionBySlug(slug)
   if (sec?.phase) return sec.phase
@@ -113,6 +130,7 @@ function getPhaseFor(slug: string): PhaseId {
 }
 
 function getGroupFor(slug: string): string | undefined {
+  if (isToolSlug(slug)) return slug
   if (isSynthesisSlug(slug)) return getSynthesisBySlug(slug)?.groupId
   return getSectionBySlug(slug)?.group
 }
@@ -134,19 +152,24 @@ function statusDot(status: 'empty' | 'draft' | 'reviewed' | undefined): string {
   return 'var(--success)'
 }
 
+function toolProgress(groupId: string): { done: number; total: number } {
+  return isToolSlug(groupId) ? { done: 0, total: 1 } : { done: 0, total: 0 }
+}
+
 // ── Componente principal ────────────────────────────────────────────────────
 
 export default function WorkspaceClient({ user, project, initialSections }: Props) {
   const router = useRouter()
   const [sections, setSections] = useState<Section[]>(initialSections)
   const [activeSlug, setActiveSlug] = useState('contexto_historico')
-  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(() => new Set(['interpretar']))
+  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(() => new Set(['interpretar', 'ferramentas']))
   const [expandedCanons, setExpandedCanons] = useState<Set<string>>(() => new Set(['interpretar_inventio', 'sermao']))
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(['contextual']))
   const [aiOpen, setAiOpen] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
 
   const activeDef = getSectionBySlug(activeSlug)
+  const activeTool = getToolAreaBySlug(activeSlug)
   const activeSection = sections.find(s => s.slug === activeSlug)
   const activePhase = NAV_PHASES.find(p => p.id === getPhaseFor(activeSlug))
 
@@ -195,6 +218,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   }
 
   function groupProgress(groupId: string) {
+    if (isToolSlug(groupId)) return toolProgress(groupId)
     const gs = getSectionsByGroup(groupId)
     return {
       total: gs.length,
@@ -377,16 +401,17 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                             <div style={{ paddingBottom: '0.2rem' }}>
                               {mode.groups.map(group => {
                                 const groupOpen = expandedGroups.has(group.id)
-                                const secs = getSectionsByGroup(group.id)
-                                if (secs.length === 0) return null
+                                const secs = isToolSlug(group.id) ? [] : getSectionsByGroup(group.id)
+                                if (secs.length === 0 && !isToolSlug(group.id)) return null
                                 const { done, total } = groupProgress(group.id)
+                                const tool = getToolAreaBySlug(group.id)
 
                                 return (
                                   <div key={group.id}>
 
                                     {/* Group toggle */}
                                     <button
-                                      onClick={() => toggleGroup(group.id)}
+                                      onClick={() => tool ? navigate(tool.slug) : toggleGroup(group.id)}
                                       style={{
                                         width: '100%', background: 'transparent', border: 'none',
                                         padding: '0.3rem 0.55rem 0.28rem 1.1rem',
@@ -395,16 +420,16 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                       }}
                                     >
                                       <span style={{ fontSize: '0.46rem', color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }}>
-                                        {groupOpen ? '▾' : '▸'}
+                                        {tool ? '•' : groupOpen ? '▾' : '▸'}
                                       </span>
                                       <span style={{
                                         fontSize: '0.67rem', fontWeight: '500',
-                                        color: 'var(--text-secondary)', flex: 1, lineHeight: '1.3',
+                                        color: activeSlug === tool?.slug ? mode.color : 'var(--text-secondary)', flex: 1, lineHeight: '1.3',
                                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                       }}>
                                         {group.label}
                                       </span>
-                                      {done > 0 && (
+                                      {!tool && done > 0 && (
                                         <span style={{
                                           fontSize: '0.56rem', flexShrink: 0,
                                           color: done === total ? 'var(--success)' : 'var(--text-muted)',
@@ -415,8 +440,18 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                       )}
                                     </button>
 
+                                    {tool && activeSlug === tool.slug && (
+                                      <div style={{
+                                        margin: '0.1rem 0.7rem 0.3rem 1.55rem',
+                                        height: '2px',
+                                        background: mode.color,
+                                        borderRadius: '2px',
+                                        opacity: 0.8,
+                                      }} />
+                                    )}
+
                                     {/* Section items */}
-                                    {groupOpen && secs.map(sd => {
+                                    {!tool && groupOpen && secs.map(sd => {
                                       const sec = sections.find(s => s.slug === sd.slug)
                                       const isActive = sd.slug === activeSlug
                                       return (
@@ -453,7 +488,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                     })}
 
                                     {/* Synthesis item */}
-                                    {groupOpen && (() => {
+                                    {!tool && groupOpen && (() => {
                                       const syn = SYNTHESIS_DEFS[group.id]
                                       if (!syn) return null
                                       const isSynActive = activeSlug === syn.slug
@@ -511,7 +546,15 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
 
           {/* Reading area */}
           <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', background: 'var(--background)' }}>
-            {activeSlug === 'texto_original' ? (
+            {isToolSlug(activeSlug) ? (
+              <ToolsWorkspace
+                key={activeSlug}
+                project={project}
+                activeSlug={activeSlug}
+                onNavigate={navigate}
+                onAskAI={prompt => { setAiPrompt(prompt); setAiOpen(true) }}
+              />
+            ) : activeSlug === 'texto_original' ? (
               <OriginalTextWorkspace
                 key={activeSlug}
                 project={project}
@@ -563,7 +606,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
               <AIPanel
                 project={project}
                 activeSlug={activeSlug}
-                activeTitle={activeDef?.title ?? ''}
+                activeTitle={activeTool?.title ?? activeDef?.title ?? ''}
                 context={aiPrompt}
                 onClearContext={() => setAiPrompt('')}
               />

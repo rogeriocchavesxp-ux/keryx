@@ -123,9 +123,48 @@ export default function SynthesisView({
 
   return (
     <div style={{ minHeight: '100%', padding: '2.5rem 1.5rem 5rem' }}>
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 1.5cm 2cm; }
+          body * { visibility: hidden; }
+          #keryx-synthesis-doc, #keryx-synthesis-doc * { visibility: visible; }
+          #keryx-synthesis-doc {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%;
+            max-width: 100% !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            padding: 1.5cm 2cm !important;
+            margin: 0 !important;
+          }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+
+      {/* ── Print toolbar ────────────────────────────────────────────────── */}
+      <div className="no-print" style={{ maxWidth: '760px', margin: '0 auto 0.75rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={() => window.print()}
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            borderRadius: '5px',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+            fontSize: '0.78rem',
+            padding: '0.3rem 0.8rem',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)' }}
+        >
+          Imprimir / PDF
+        </button>
+      </div>
 
       {/* ── Document sheet ───────────────────────────────────────────────── */}
-      <div style={{
+      <div id="keryx-synthesis-doc" style={{
         maxWidth: '760px',
         margin: '0 auto',
         background: '#ffffff',
@@ -207,6 +246,7 @@ export default function SynthesisView({
                   {secIdx + 1}.&ensp;{sd.title}
                 </h2>
                 <button
+                  className="no-print"
                   onClick={() => onNavigate(sd.slug)}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
@@ -366,10 +406,10 @@ export default function SynthesisView({
         )}
 
         {/* ── AI synthesis ─────────────────────────────────────────────── */}
-        <div style={{ borderTop: '2px solid #1a1a1a' }} />
-        <div style={{ borderTop: '1px solid #1a1a1a', marginTop: '3px', marginBottom: '2rem' }} />
+        <div className="no-print" style={{ borderTop: '2px solid #1a1a1a' }} />
+        <div className="no-print" style={{ borderTop: '1px solid #1a1a1a', marginTop: '3px', marginBottom: '2rem' }} />
 
-        <div style={{ marginBottom: '1rem' }}>
+        <div className="no-print" style={{ marginBottom: '1rem' }}>
           <h2 style={{
             fontFamily: DOC, fontSize: '14pt', fontWeight: '700',
             color: '#1a1a1a', margin: '0 0 0.6rem',
@@ -407,7 +447,7 @@ export default function SynthesisView({
       </div>
 
       {/* ── Next step CTA — outside the document ─────────────────────────── */}
-      <div style={{
+      <div className="no-print" style={{
         maxWidth: '760px',
         margin: '2rem auto 0',
         padding: '1.25rem 1.5rem',

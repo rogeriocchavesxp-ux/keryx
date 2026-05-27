@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import type { Project } from '@/types/database'
 import { TOOL_AREAS, type ToolArea } from '@/lib/tools-content'
+import CrossReferencesWorkspace from './CrossReferencesWorkspace'
 
 interface Props {
   project: Project
@@ -76,6 +77,9 @@ export default function ToolsWorkspace({ project, activeSlug, onNavigate, onAskA
         </div>
       </aside>
 
+      {activeArea.id === 'refs_cruzadas' ? (
+        <CrossReferencesWorkspace project={project} onAskAI={onAskAI} />
+      ) : (
       <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '2.2rem clamp(1.4rem, 3vw, 2.4rem) 4rem' }}>
         <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1.4rem' }}>
@@ -311,6 +315,7 @@ export default function ToolsWorkspace({ project, activeSlug, onNavigate, onAskA
           </div>
         </div>
       </main>
+      )}
     </div>
   )
 }

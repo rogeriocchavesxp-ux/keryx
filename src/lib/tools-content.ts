@@ -1,4 +1,4 @@
-export type ToolAreaId = 'sistematica' | 'biblica' | 'dicionario' | 'livros'
+export type ToolAreaId = 'sistematica' | 'biblica' | 'dicionario' | 'livros' | 'refs_cruzadas'
 
 export interface ToolReference {
   title: string
@@ -194,6 +194,49 @@ export const TOOL_AREAS: ToolArea[] = [
       { label: 'Bibliografia acadêmica', prompt: 'Gere uma bibliografia acadêmica anotada em português do Brasil para esta pesquisa.' },
     ],
     visualization: ['Tema', 'Nível', 'Obras essenciais', 'Comentários', 'Leitura avançada', 'Uso pastoral'],
+  },
+  {
+    id: 'refs_cruzadas',
+    slug: 'ferramentas_refs_cruzadas',
+    title: 'Referências Cruzadas',
+    shortTitle: 'Ref. Cruzadas',
+    subtitle: 'Rede canônica da Escritura',
+    objective: 'Explorar paralelos bíblicos, ecos, alusões, tipologia e conexões canônicas — rastreando como a Escritura interpreta e ilumina a si mesma.',
+    color: '#5ba8c4',
+    bgActive: 'rgba(91,168,196,0.1)',
+    sections: [
+      'Paralelos verbais',
+      'Paralelos temáticos',
+      'Citação direta',
+      'Alusão',
+      'Tipologia',
+      'NT usa AT',
+      'Progressão canônica',
+      'Cristologia',
+      'Aliança',
+      'História da redenção',
+    ],
+    capabilities: [
+      'Encontrar paralelos verbais e temáticos',
+      'Identificar citações do NT no AT',
+      'Detectar alusões e ecos intertextuais',
+      'Analisar tipologia e padrões narrativos',
+      'Rastrear temas pelo cânone',
+      'Conectar passagem à história da redenção',
+      'Análise aliancial e cristológica',
+    ],
+    aiRole: 'especialista em intertextualidade bíblica, teologia bíblica reformada e referências cruzadas canônicas, atento a paralelos verbais, ecos literários, tipologia e progressão redentivo-histórica.',
+    references: [
+      { title: 'Bases principais', items: ['Treasury of Scripture Knowledge', 'Thompson Chain Reference', 'Logos Cross References', 'Commentary on the NT Use of the OT'] },
+      { title: 'Autores prioritários', items: ['G. K. Beale', 'D. A. Carson', 'Geerhardus Vos', 'Edmund Clowney', 'Graeme Goldsworthy', 'Richard Hays', 'O. Palmer Robertson'] },
+    ],
+    actions: [
+      { label: 'Paralelos diretos', prompt: 'Liste os principais paralelos verbais e temáticos deste texto. Para cada: versículo, tipo de conexão e relevância exegética. Use TSK e NIDOTTE.' },
+      { label: 'Citações e alusões NT', prompt: 'Identifique como este texto é citado, aludido ou ecoado no NT. Como o autor do NT usa o texto? Contribuição cristológica? (Beale & Carson)' },
+      { label: 'Análise tipológica', prompt: 'Analise a tipologia presente neste texto. Tipo, antítipo, escalamento. Base exegética sólida, sem alegoria. (Clowney, Davidson, Beale)' },
+      { label: 'Progressão redentiva', prompt: 'Posicione este texto na linha redentivo-histórica. O que prefigurou? O que cumpre? Como culmina em Cristo e aponta para nova criação? (Vos, Gaffin, Beale)' },
+    ],
+    visualization: ['Texto', 'Paralelos AT', 'Eco/Alusão', 'Tipologia', 'Cumprimento NT', 'Nova Criação'],
   },
 ]
 

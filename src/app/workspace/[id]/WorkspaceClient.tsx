@@ -160,9 +160,32 @@ const PHASE_ICONS: Record<PhaseId, string> = {
 }
 
 const GROUP_SUBTITLES: Record<string, string> = {
+  // Investigar
   contextual: 'Histórico, literário e canônico',
   textual:    'Texto original e estrutura',
   teologico:  'Mensagem e implicações',
+  // Preparar
+  preparar_espiritual:  'Oração e dependência',
+  preparar_assimilacao: 'Contato direto com o texto',
+  preparar_impressoes:  'Notas rápidas e perguntas',
+  preparar_visao_geral: 'Tema, estrutura e clímax',
+  // Comunicar — Sermão
+  sermao_dispositio:    'Organização e estrutura',
+  sermao_elocutio:      'Forma de comunicação',
+  sermao_memoria:       'Memorização e preparo',
+  sermao_pronuntiatio:  'Entrega e performance',
+  // Comunicar — Estudo Bíblico
+  estudo_dispositio:    'Organização e estrutura',
+  estudo_elocutio:      'Forma de comunicação',
+  estudo_memoria:       'Memorização e preparo',
+  estudo_pronuntiatio:  'Entrega e performance',
+  // Comunicar — Devocional
+  devocional_dispositio:    'Organização e estrutura',
+  devocional_elocutio:      'Forma de comunicação',
+  devocional_memoria:       'Memorização e preparo',
+  devocional_pronuntiatio:  'Entrega e performance',
+  // Colagens
+  colagens: 'Citações, notas e insights',
 }
 
 const MODE_ICONS: Record<string, string> = {
@@ -631,107 +654,86 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                     const directSlug      = isSingleSection ? secs[0].slug : (tool?.slug ?? group.id)
                                     const directLabel     = isSingleSection ? secs[0].shortTitle : group.label
                                     const { done, total } = groupProgress(group.id)
-                                    const syn             = !isDirect ? SYNTHESIS_DEFS[group.id] : undefined
-                                    const isInvestigar    = phase.id === 'investigar'
+                                    const syn        = !isDirect ? SYNTHESIS_DEFS[group.id] : undefined
+                                    const isActive   = isDirect && activeSlug === directSlug
+                                    const isExpanded = !isDirect && groupOpen
+                                    const highlight  = isActive || isExpanded
+                                    const groupTitle = isDirect ? directLabel : group.label
+                                    const groupSub   = GROUP_SUBTITLES[group.id]
+                                      ?? (isToolSlug(group.id) ? getToolAreaBySlug(group.id)?.subtitle : undefined)
+                                      ?? ''
 
                                     return (
-                                      <div key={group.id} style={{ marginBottom: isInvestigar && groupOpen ? '0.55rem' : 0 }}>
+                                      <div key={group.id} style={{ marginBottom: groupOpen ? '0.45rem' : 0 }}>
 
-                                        {/* ── Group header ──────────────────── */}
-                                        {isInvestigar && !isDirect ? (
-                                          /* Investigar: circled number + CAPS + subtitle */
-                                          <button
-                                            onClick={() => toggleGroup(group.id)}
-                                            style={{
-                                              width: '100%', border: 'none', cursor: 'pointer',
-                                              background: 'transparent', textAlign: 'left', fontFamily: 'inherit',
-                                              padding: '0.55rem 0.65rem 0.42rem 0.7rem',
-                                              display: 'flex', alignItems: 'flex-start', gap: '0.48rem',
-                                            }}
-                                          >
-                                            {/* Circled number */}
-                                            <span style={{
-                                              width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
-                                              border: `1.5px solid ${groupOpen ? mode.color : 'var(--border)'}`,
-                                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                              fontSize: '0.62rem', fontWeight: 900, lineHeight: 1,
-                                              color: groupOpen ? mode.color : 'var(--text-muted)',
-                                              marginTop: '0.05rem',
-                                              transition: 'border-color 0.15s, color 0.15s',
-                                            }}>
-                                              {groupIdx + 1}
-                                            </span>
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                              <div style={{
-                                                fontSize: '0.64rem', fontWeight: 900, letterSpacing: '0.06em',
-                                                textTransform: 'uppercase', lineHeight: 1.2,
-                                                color: groupOpen ? mode.color : 'var(--text-secondary)',
-                                                transition: 'color 0.15s',
-                                              }}>
-                                                {group.label}
-                                              </div>
-                                              <div style={{ fontSize: '0.57rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.1rem', lineHeight: 1.2 }}>
-                                                {GROUP_SUBTITLES[group.id] ?? ''}
-                                              </div>
-                                            </div>
-                                            {/* Progress indicator */}
-                                            {done > 0 && (
-                                              <span style={{
-                                                fontSize: '0.6rem', flexShrink: 0, marginTop: '0.1rem', fontWeight: 700,
-                                                color: done === total ? 'var(--success)' : 'var(--accent)',
-                                              }}>
-                                                {done === total ? '✓' : `${done}/${total}`}
-                                              </span>
-                                            )}
-                                          </button>
-                                        ) : (
-                                          /* Other phases: simple row */
-                                          <button
-                                            onClick={() => isDirect ? navigate(directSlug) : toggleGroup(group.id)}
-                                            style={{
-                                              width: '100%', border: 'none', cursor: 'pointer',
-                                              background: isDirect && activeSlug === directSlug ? mode.bgActive : 'transparent',
-                                              borderLeft: `2px solid ${isDirect && activeSlug === directSlug ? mode.color : 'transparent'}`,
-                                              textAlign: 'left', fontFamily: 'inherit',
-                                              padding: '0.3rem 0.55rem 0.28rem 0.85rem',
-                                              display: 'flex', alignItems: 'center', gap: '0.3rem',
-                                            }}
-                                            onMouseEnter={e => { if (!(isDirect && activeSlug === directSlug)) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
-                                            onMouseLeave={e => { if (!(isDirect && activeSlug === directSlug)) e.currentTarget.style.background = 'transparent' }}
-                                          >
-                                            <span style={{
-                                              fontSize: '0.56rem', color: 'var(--text-muted)', flexShrink: 0, lineHeight: 1,
-                                              opacity: isDirect ? 0 : 0.45,
-                                            }}>
-                                              {!isDirect ? (groupOpen ? '▾' : '▸') : ''}
-                                            </span>
-                                            <span style={{
-                                              flex: 1, fontSize: '0.7rem',
-                                              fontWeight: isDirect && activeSlug === directSlug ? 600 : 450,
-                                              color: isDirect && activeSlug === directSlug ? mode.color : 'var(--text-secondary)',
-                                              lineHeight: 1.35,
+                                        {/* ── Group header — padrão único para todas as fases ── */}
+                                        <button
+                                          onClick={() => isDirect ? navigate(directSlug) : toggleGroup(group.id)}
+                                          style={{
+                                            width: '100%', border: 'none', cursor: 'pointer',
+                                            background: isActive ? mode.bgActive : 'transparent',
+                                            borderLeft: `2px solid ${isActive ? mode.color : 'transparent'}`,
+                                            textAlign: 'left', fontFamily: 'inherit',
+                                            padding: '0.48rem 0.6rem 0.4rem 0.65rem',
+                                            display: 'flex', alignItems: 'flex-start', gap: '0.45rem',
+                                            transition: 'background 0.12s',
+                                          }}
+                                          onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+                                          onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                                        >
+                                          {/* Circled number */}
+                                          <span style={{
+                                            width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
+                                            border: `1.5px solid ${highlight ? mode.color : 'var(--border)'}`,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '0.6rem', fontWeight: 900, lineHeight: 1,
+                                            color: highlight ? mode.color : 'var(--text-muted)',
+                                            marginTop: '0.08rem',
+                                            transition: 'border-color 0.15s, color 0.15s',
+                                          }}>
+                                            {groupIdx + 1}
+                                          </span>
+
+                                          <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{
+                                              fontSize: '0.64rem', fontWeight: 800, letterSpacing: '0.05em',
+                                              textTransform: 'uppercase', lineHeight: 1.25,
+                                              color: highlight ? mode.color : 'var(--text-secondary)',
+                                              transition: 'color 0.15s',
                                               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                             }}>
-                                              {directLabel}
+                                              {groupTitle}
+                                            </div>
+                                            {groupSub && (
+                                              <div style={{ fontSize: '0.56rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.08rem', lineHeight: 1.25 }}>
+                                                {groupSub}
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Indicador direito */}
+                                          {isActive && (
+                                            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: mode.color, flexShrink: 0, marginTop: '0.3rem' }} />
+                                          )}
+                                          {!isDirect && done > 0 && (
+                                            <span style={{
+                                              fontSize: '0.58rem', flexShrink: 0, fontWeight: 700, marginTop: '0.1rem',
+                                              color: done === total ? 'var(--success)' : 'var(--accent)',
+                                            }}>
+                                              {done === total ? '✓' : `${done}/${total}`}
                                             </span>
-                                            {isDirect && activeSlug === directSlug && (
-                                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: mode.color, flexShrink: 0 }} />
-                                            )}
-                                            {!isDirect && done > 0 && (
-                                              <span style={{
-                                                fontSize: '0.58rem', flexShrink: 0, fontWeight: 700,
-                                                color: done === total ? 'var(--success)' : 'var(--text-muted)',
-                                              }}>
-                                                {done === total ? '✓' : `${done}`}
-                                              </span>
-                                            )}
-                                          </button>
-                                        )}
+                                          )}
+                                          {!isDirect && (
+                                            <span style={{ fontSize: '0.42rem', color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0, marginTop: '0.15rem' }}>
+                                              {groupOpen ? '▾' : '▸'}
+                                            </span>
+                                          )}
+                                        </button>
 
                                         {/* ── Section list (with vertical line) ── */}
                                         {!isDirect && groupOpen && (
                                           <div style={{
-                                            marginLeft: isInvestigar ? '1.5rem' : '1.15rem',
+                                            marginLeft: '1.45rem',
                                             borderLeft: `1px solid var(--border-subtle)`,
                                             marginBottom: '0.15rem',
                                           }}>

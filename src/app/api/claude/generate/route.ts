@@ -84,6 +84,9 @@ export async function POST(req: Request) {
     .join('\n')
 
   const modeInstruction = (() => {
+    if (sectionDef.phase === 'preparar') {
+      return 'Modo: Preparar. Gere conteúdo devocional, pastoral e metodológico, evitando tecnicismo pesado. Priorize oração, assimilação do texto, observações iniciais, leitura lenta e formação espiritual do intérprete.'
+    }
     if (sectionDef.communicationMode === 'sermao') {
       return 'Modo ministerial: Sermão. Gere conteúdo homilético, argumentativo, persuasivo, cristocêntrico e adequado à proclamação pública.'
     }

@@ -1,3 +1,4 @@
+import { PREPARE_SECTIONS } from './prepare-sections'
 import { COMMUNICATION_SECTIONS } from './communication-sections'
 
 export interface CardDef {
@@ -11,7 +12,7 @@ export interface SectionDef {
   slug: string
   title: string
   shortTitle: string
-  phase?: 'interpretar' | 'comunicar'
+  phase?: 'preparar' | 'interpretar' | 'comunicar'
   communicationMode?: 'sermao' | 'estudo_biblico' | 'devocional'
   module: 'inventio' | 'dispositio' | 'elocutio' | 'memoria' | 'pronuntiatio'
   group: string
@@ -24,6 +25,7 @@ export interface SectionDef {
 }
 
 export const WORKSPACE_SECTIONS: SectionDef[] = [
+  ...PREPARE_SECTIONS,
   // ── ESTUDO CONTEXTUAL ──────────────────────────────────────────────────────
 
   {

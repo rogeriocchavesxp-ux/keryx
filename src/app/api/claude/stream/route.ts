@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { EXEGESE_SYSTEM_PROMPT } from '@/lib/prompts/exegese-system'
 import { getSectionBySlug } from '@/lib/workspace-sections'
+import { getToolAreaBySlug } from '@/lib/tools-content'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -64,7 +65,17 @@ export async function POST(req: Request) {
   }
 
   const sectionDef = getSectionBySlug(activeSlug)
+  const toolArea = getToolAreaBySlug(activeSlug)
   const modeInstruction = (() => {
+    if (sectionDef?.phase === 'preparar') {
+      return 'Macroseção ativa: Preparar. Responda como mentor pastoral, guia devocional e orientador metodológico. Evite tecnicismo excessivo, gramática pesada e análise acadêmica imediata. Priorize assimilação, contemplação, observação, oração, leitura lenta e preparação pastoral.'
+    }
+    if (activeSlug === 'colagens') {
+      return 'Macroseção ativa: Colagens. Responda como assistente de pesquisa e organização: resuma materiais, gere resenhas, sugira tags, relacione citações ao estudo atual, identifique conexões teológicas e ajude a montar uma rede viva de apoio exegético.'
+    }
+    if (toolArea) {
+      return `Ferramenta ativa: ${toolArea.title}. Responda como ${toolArea.aiRole} Priorize ensino, organização, referências reformadas, conexões bíblicas e utilidade pastoral.`
+    }
     if (sectionDef?.communicationMode === 'sermao') {
       return 'Modo ministerial ativo: Sermão. Responda como mentor homilético: argumentativo, persuasivo, cristocêntrico e voltado à proclamação pública.'
     }

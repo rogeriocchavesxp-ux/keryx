@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Project } from '@/types/database'
 import { getSectionBySlug } from '@/lib/workspace-sections'
+import { getToolAreaBySlug } from '@/lib/tools-content'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -271,6 +272,20 @@ export default function AIPanel({ project, activeSlug, activeTitle, context, onC
 
 function quickPrompts(slug: string, project: Project): string[] {
   const ref = `${project.book} ${project.passage_ref}`
+  if (slug === 'colagens') {
+    return [
+      `Sugira conexões entre minhas colagens e ${ref}.`,
+      'Organize minhas colagens por tags, categorias e uso homilético.',
+      'Transforme uma citação longa em resumo acadêmico com aplicação pastoral.',
+      'Identifique temas recorrentes nas minhas notas e insights.',
+    ]
+  }
+
+  const toolArea = getToolAreaBySlug(slug)
+  if (toolArea) {
+    return toolArea.actions.slice(0, 4).map(action => action.prompt)
+  }
+
   const sectionDef = getSectionBySlug(slug)
   if (sectionDef && sectionDef.keyQuestions.length > 0) {
     // Return up to 4 key questions for the active section

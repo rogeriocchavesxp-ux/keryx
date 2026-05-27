@@ -44,6 +44,13 @@ function modeTheme(mode: SectionDef['communicationMode']): { color: string; bg: 
   return { color: 'var(--accent)', bg: 'var(--accent-subtle)', label: 'Exegese' }
 }
 
+function sectionTheme(sectionDef: SectionDef): { color: string; bg: string; label: string } {
+  if (sectionDef.phase === 'preparar') {
+    return { color: '#c9a66b', bg: 'rgba(201,166,107,0.08)', label: 'Preparar' }
+  }
+  return modeTheme(sectionDef.communicationMode)
+}
+
 export default function SectionWorkspace({
   sectionDef, project, userId, existingSection, onUpdate, onAskAI,
 }: Props) {
@@ -170,7 +177,7 @@ export default function SectionWorkspace({
   }
 
   const moduleColor = MODULE_COLORS[sectionDef.module] ?? 'var(--accent)'
-  const theme = modeTheme(sectionDef.communicationMode)
+  const theme = sectionTheme(sectionDef)
   const hasAnyContent = Object.values(cardContent).some(v => v.trim().length > 0)
   const savedLabel = saving
     ? 'salvando…'
@@ -188,7 +195,7 @@ export default function SectionWorkspace({
         textTransform: 'uppercase', letterSpacing: '0.07em',
         marginBottom: '0.75rem',
       }}>
-        {sectionDef.phase === 'comunicar' && (
+        {(sectionDef.phase === 'comunicar' || sectionDef.phase === 'preparar') && (
           <>
             <span style={{
               color: theme.color,
@@ -240,11 +247,11 @@ export default function SectionWorkspace({
         fontSize: '0.87rem', color: 'var(--text-secondary)',
         lineHeight: '1.8', fontStyle: 'italic',
         borderLeft: `2px solid ${sectionDef.phase === 'comunicar' ? theme.color : moduleColor}`,
-        background: sectionDef.phase === 'comunicar' ? theme.bg : 'transparent',
-        borderRadius: sectionDef.phase === 'comunicar' ? '0 6px 6px 0' : 0,
-        paddingTop: sectionDef.phase === 'comunicar' ? '0.75rem' : 0,
-        paddingBottom: sectionDef.phase === 'comunicar' ? '0.75rem' : 0,
-        paddingRight: sectionDef.phase === 'comunicar' ? '0.85rem' : 0,
+        background: sectionDef.phase === 'comunicar' || sectionDef.phase === 'preparar' ? theme.bg : 'transparent',
+        borderRadius: sectionDef.phase === 'comunicar' || sectionDef.phase === 'preparar' ? '0 6px 6px 0' : 0,
+        paddingTop: sectionDef.phase === 'comunicar' || sectionDef.phase === 'preparar' ? '0.75rem' : 0,
+        paddingBottom: sectionDef.phase === 'comunicar' || sectionDef.phase === 'preparar' ? '0.75rem' : 0,
+        paddingRight: sectionDef.phase === 'comunicar' || sectionDef.phase === 'preparar' ? '0.85rem' : 0,
         paddingLeft: '1rem', marginBottom: '1.5rem',
       }}>
         {sectionDef.objective}

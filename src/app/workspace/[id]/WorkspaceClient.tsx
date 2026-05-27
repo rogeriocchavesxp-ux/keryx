@@ -151,6 +151,26 @@ const NAV_PHASES: NavPhase[] = [
 
 const NAV_GROUP_IDS = new Set(NAV_PHASES.flatMap(phase => phase.modes.flatMap(mode => mode.groups.map(group => group.id))))
 
+const PHASE_ICONS: Record<PhaseId, string> = {
+  preparar:     '✦',
+  investigar:   '◎',
+  comunicar:    '▷',
+  ferramentas:  '▤',
+  colagens:     '⊞',
+}
+
+const GROUP_SUBTITLES: Record<string, string> = {
+  contextual: 'Histórico, literário e canônico',
+  textual:    'Texto original e estrutura',
+  teologico:  'Mensagem e implicações',
+}
+
+const MODE_ICONS: Record<string, string> = {
+  sermao:         '✦',
+  estudo_biblico: '◈',
+  devocional:     '◌',
+}
+
 // ── Helpers de navegação ───────────────────────────────────────────────────
 
 function getPhaseFor(slug: string): PhaseId {
@@ -229,7 +249,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   const [aiPrompt, setAiPrompt] = useState('')
 
   // Panel layout
-  const [sidebarWidth, setSidebarWidth] = useState(176)
+  const [sidebarWidth, setSidebarWidth] = useState(210)
   const [referenceWidth, setReferenceWidth] = useState(280)
   const [aiWidth, setAiWidth] = useState(308)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -237,7 +257,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   const [focusMode, setFocusMode] = useState(false)
   const [sideBySide, setSideBySide] = useState(false)
 
-  const sidebarWidthRef = useRef(176)
+  const sidebarWidthRef = useRef(210)
   const referenceWidthRef = useRef(280)
   const aiWidthRef = useRef(308)
   sidebarWidthRef.current = sidebarWidth
@@ -492,250 +512,324 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
           transition: 'width 0.18s ease',
         }}>
           {sidebarCollapsed ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', paddingTop: '0.4rem' }}>
+            /* ── Sidebar collapsed ────────────────────────────────── */
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.15rem', paddingTop: '0.45rem' }}>
               <button
                 onClick={() => { setSidebarCollapsed(false); localStorage.setItem('keryx_sidebar_c', '0') }}
                 title="Expandir menu"
-                style={{ width: '28px', height: '24px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9rem', borderRadius: '3px' }}
+                style={{ width: '32px', height: '26px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.95rem', borderRadius: '3px', fontFamily: 'inherit' }}
                 onMouseEnter={e => e.currentTarget.style.color = 'var(--text-secondary)'}
                 onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
               >›</button>
               {NAV_PHASES.map(ph => (
                 <button key={ph.id} title={ph.label}
                   onClick={() => { setSidebarCollapsed(false); localStorage.setItem('keryx_sidebar_c', '0'); setExpandedPhases(prev => new Set([...prev, ph.id])) }}
-                  style={{ width: '28px', height: '22px', background: 'transparent', border: 'none', cursor: 'pointer', color: ph.color, fontSize: '0.6rem', fontWeight: 800, borderRadius: '3px' }}
+                  style={{ width: '32px', height: '26px', background: 'transparent', border: 'none', cursor: 'pointer', color: ph.color, fontSize: '0.64rem', fontWeight: 900, borderRadius: '3px', fontFamily: 'inherit' }}
                 >{ph.roman}</button>
               ))}
             </div>
           ) : (
+            /* ── Sidebar expanded ────────────────────────────────── */
             <>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.35rem 0.4rem 0', flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.3rem 0.4rem 0', flexShrink: 0 }}>
                 <button
                   onClick={() => { setSidebarCollapsed(true); localStorage.setItem('keryx_sidebar_c', '1') }}
                   title="Recolher menu"
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '0.1rem 0.3rem', borderRadius: '3px' }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.82rem', padding: '0.1rem 0.3rem', borderRadius: '3px', fontFamily: 'inherit' }}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--text-secondary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
                 >‹</button>
               </div>
-          {NAV_PHASES.map((phase, phaseIdx) => {
-            const phaseOpen = expandedPhases.has(phase.id)
 
-            return (
-              <div key={phase.id}>
+              {NAV_PHASES.map((phase, phaseIdx) => {
+                const phaseOpen  = expandedPhases.has(phase.id)
+                const singleMode = phase.modes.length === 1
 
-                {/* Phase header */}
-                <button
-                  onClick={() => togglePhase(phase.id)}
-                  style={{
-                    width: '100%', border: 'none', cursor: 'pointer',
-                    background: 'transparent', textAlign: 'left',
-                    padding: phaseIdx === 0 ? '0.9rem 0.75rem 0.5rem' : '0.75rem 0.75rem 0.5rem',
-                    borderTop: phaseIdx > 0 ? '1px solid var(--border-subtle)' : 'none',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
-                      <span style={{ fontSize: '0.56rem', fontWeight: '800', color: phase.color, opacity: 0.5, letterSpacing: '0.08em' }}>
-                        {phase.roman}
-                      </span>
-                      <span style={{ fontSize: '0.82rem', fontWeight: '700', color: phase.color, letterSpacing: '-0.01em' }}>
-                        {phase.label}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '0.5rem', color: 'var(--text-muted)', opacity: 0.55 }}>
-                      {phaseOpen ? '▾' : '▸'}
-                    </span>
-                  </div>
-                </button>
+                return (
+                  <div key={phase.id} style={{ marginBottom: phaseOpen ? '0.2rem' : 0 }}>
 
-                {/* Modes */}
-                {phaseOpen && (
-                  <div style={{ paddingBottom: '0.4rem' }}>
-                    {phase.modes.map((mode, modeIdx) => {
-                      const modeOpen = expandedCanons.has(mode.id)
+                    {/* ── Phase header ──────────────────────────── */}
+                    <button
+                      onClick={() => togglePhase(phase.id)}
+                      style={{
+                        width: '100%', border: 'none', cursor: 'pointer',
+                        background: 'transparent', textAlign: 'left', fontFamily: 'inherit',
+                        padding: phaseIdx === 0 ? '1rem 0.75rem 0.45rem' : '0.75rem 0.75rem 0.45rem',
+                        borderTop: phaseIdx > 0 ? '1px solid var(--border-subtle)' : 'none',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.38rem' }}>
+                        <span style={{ fontSize: '0.65rem', color: phase.color, opacity: phaseOpen ? 0.75 : 0.4, flexShrink: 0, lineHeight: 1 }}>
+                          {PHASE_ICONS[phase.id]}
+                        </span>
+                        <span style={{
+                          flex: 1,
+                          fontSize: '0.72rem', fontWeight: 900,
+                          color: phaseOpen ? phase.color : `${phase.color}99`,
+                          letterSpacing: '0.06em', textTransform: 'uppercase', lineHeight: 1,
+                        }}>
+                          {phase.roman}. {phase.label}
+                        </span>
+                        <span style={{ fontSize: '0.42rem', color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }}>
+                          {phaseOpen ? '▾' : '▸'}
+                        </span>
+                      </div>
+                    </button>
 
-                      return (
-                        <div key={mode.id}>
+                    {/* ── Phase body ────────────────────────────── */}
+                    {phaseOpen && (
+                      <div style={{ paddingBottom: '0.5rem' }}>
+                        {phase.modes.map((mode, modeIdx) => {
+                          const modeOpen = singleMode || expandedCanons.has(mode.id)
 
-                          {/* Mode header */}
-                          <button
-                            onClick={() => toggleCanon(mode.id)}
-                            style={{
-                              width: '100%', border: 'none', cursor: 'pointer',
-                              background: 'transparent', textAlign: 'left',
-                              padding: '0.4rem 0.6rem 0.35rem 0.8rem',
-                              borderTop: modeIdx > 0 ? '1px solid var(--border-subtle)' : 'none',
-                              display: 'flex', alignItems: 'flex-start', gap: '0.3rem',
-                            }}
-                          >
-                            <span style={{ fontSize: '0.48rem', color: mode.color, opacity: 0.75, flexShrink: 0, marginTop: '0.22rem' }}>
-                              {modeOpen ? '▾' : '▸'}
-                            </span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                fontSize: '0.74rem', fontWeight: '600',
-                                color: mode.color, lineHeight: '1.2',
-                              }}>
-                                {mode.label}
-                              </div>
-                              <div style={{
-                                fontSize: '0.59rem', color: 'var(--text-muted)',
-                                fontStyle: 'italic', lineHeight: '1.2', marginTop: '0.08rem',
-                              }}>
-                                {mode.subtitle}
-                              </div>
-                            </div>
-                          </button>
+                          return (
+                            <div key={mode.id}>
 
-                          {/* Groups */}
-                          {modeOpen && (
-                            <div style={{ paddingBottom: '0.2rem' }}>
-                              {mode.groups.map(group => {
-                                const groupOpen = expandedGroups.has(group.id)
-                                const isUtilityGroup = isToolSlug(group.id) || group.id === 'colagens'
-                                const secs = isUtilityGroup ? [] : getSectionsByGroup(group.id)
-                                if (secs.length === 0 && !isUtilityGroup) return null
-                                const isSingleSection = !isUtilityGroup && secs.length === 1 && !SYNTHESIS_DEFS[group.id]
-                                const isDirect = isUtilityGroup || isSingleSection
-                                const tool = getToolAreaBySlug(group.id)
-                                const directSlug = isSingleSection ? secs[0].slug : (tool?.slug ?? group.id)
-                                const directLabel = isSingleSection ? secs[0].shortTitle : group.label
-                                const { done, total } = groupProgress(group.id)
-
-                                return (
-                                  <div key={group.id}>
-
-                                    {/* Group toggle */}
-                                    <button
-                                      onClick={() => isDirect ? navigate(directSlug) : toggleGroup(group.id)}
-                                      style={{
-                                        width: '100%', background: 'transparent', border: 'none',
-                                        padding: '0.3rem 0.55rem 0.28rem 1.1rem',
-                                        display: 'flex', alignItems: 'center', gap: '0.28rem',
-                                        cursor: 'pointer', textAlign: 'left',
-                                      }}
-                                    >
-                                      <span style={{ fontSize: '0.46rem', color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }}>
-                                        {isDirect ? '•' : groupOpen ? '▾' : '▸'}
-                                      </span>
-                                      <span style={{
-                                        fontSize: '0.67rem', fontWeight: '500',
-                                        color: activeSlug === directSlug ? mode.color : 'var(--text-secondary)', flex: 1, lineHeight: '1.3',
-                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                      }}>
-                                        {directLabel}
-                                      </span>
-                                      {!isDirect && done > 0 && (
-                                        <span style={{
-                                          fontSize: '0.56rem', flexShrink: 0,
-                                          color: done === total ? 'var(--success)' : 'var(--text-muted)',
-                                          opacity: 0.75,
-                                        }}>
-                                          {done}/{total}
-                                        </span>
-                                      )}
-                                    </button>
-
-                                    {isDirect && activeSlug === directSlug && (
-                                      <div style={{
-                                        margin: '0.1rem 0.7rem 0.3rem 1.55rem',
-                                        height: '2px',
-                                        background: mode.color,
-                                        borderRadius: '2px',
-                                        opacity: 0.8,
-                                      }} />
+                              {/* Mode header — only for multi-mode phases (Produzir) */}
+                              {!singleMode && (
+                                <button
+                                  onClick={() => toggleCanon(mode.id)}
+                                  style={{
+                                    width: '100%', border: 'none', cursor: 'pointer',
+                                    background: modeOpen ? `${mode.bgActive}` : 'transparent',
+                                    textAlign: 'left', fontFamily: 'inherit',
+                                    padding: '0.42rem 0.65rem 0.38rem 0.75rem',
+                                    borderTop: modeIdx > 0 ? '1px solid var(--border-subtle)' : 'none',
+                                    display: 'flex', alignItems: 'center', gap: '0.35rem',
+                                  }}
+                                >
+                                  <span style={{ fontSize: '0.56rem', color: mode.color, opacity: 0.7, flexShrink: 0, lineHeight: 1 }}>
+                                    {MODE_ICONS[mode.id] ?? '◈'}
+                                  </span>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: mode.color, lineHeight: 1.2 }}>
+                                      {mode.label}
+                                    </div>
+                                    {!modeOpen && (
+                                      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.2, marginTop: '0.05rem' }}>
+                                        {mode.subtitle}
+                                      </div>
                                     )}
-
-                                    {/* Section items */}
-                                    {!isDirect && groupOpen && secs.map(sd => {
-                                      const sec = sections.find(s => s.slug === sd.slug)
-                                      const isActive = sd.slug === activeSlug
-                                      return (
-                                        <button
-                                          key={sd.slug}
-                                          onClick={() => navigate(sd.slug)}
-                                          style={{
-                                            width: '100%', border: 'none', fontFamily: 'inherit',
-                                            background: isActive ? mode.bgActive : 'transparent',
-                                            borderLeft: `2px solid ${isActive ? mode.color : 'transparent'}`,
-                                            padding: '0.24rem 0.4rem 0.24rem 1.3rem',
-                                            display: 'flex', alignItems: 'center', gap: '0.36rem',
-                                            cursor: 'pointer', textAlign: 'left',
-                                            transition: 'background 0.1s',
-                                          }}
-                                          onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
-                                          onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
-                                        >
-                                          <span style={{
-                                            width: '4px', height: '4px', borderRadius: '50%', flexShrink: 0,
-                                            background: statusDot(sec?.status),
-                                            opacity: isActive ? 1 : 0.5,
-                                          }} />
-                                          <span style={{
-                                            fontSize: '0.71rem', lineHeight: '1.3',
-                                            color: isActive ? mode.color : 'var(--text-secondary)',
-                                            fontWeight: isActive ? '500' : '400',
-                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                          }}>
-                                            {sd.shortTitle}
-                                          </span>
-                                        </button>
-                                      )
-                                    })}
-
-                                    {/* Synthesis item */}
-                                    {!isDirect && groupOpen && (() => {
-                                      const syn = SYNTHESIS_DEFS[group.id]
-                                      if (!syn) return null
-                                      const isSynActive = activeSlug === syn.slug
-                                      return (
-                                        <button
-                                          onClick={() => navigate(syn.slug)}
-                                          style={{
-                                            width: '100%', border: 'none', fontFamily: 'inherit',
-                                            background: isSynActive ? mode.bgActive : 'transparent',
-                                            borderLeft: `2px solid ${isSynActive ? mode.color : 'var(--border-subtle)'}`,
-                                            padding: '0.24rem 0.4rem 0.24rem 1.3rem',
-                                            display: 'flex', alignItems: 'center', gap: '0.36rem',
-                                            cursor: 'pointer', textAlign: 'left',
-                                            marginTop: '0.15rem',
-                                            transition: 'background 0.1s',
-                                          }}
-                                          onMouseEnter={e => { if (!isSynActive) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
-                                          onMouseLeave={e => { if (!isSynActive) e.currentTarget.style.background = 'transparent' }}
-                                        >
-                                          <span style={{
-                                            width: '4px', height: '2px', borderRadius: '1px', flexShrink: 0,
-                                            background: isSynActive ? mode.color : 'var(--border)',
-                                          }} />
-                                          <span style={{
-                                            fontSize: '0.69rem', lineHeight: '1.3',
-                                            color: isSynActive ? mode.color : 'var(--text-muted)',
-                                            fontStyle: 'italic', flex: 1,
-                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                          }}>
-                                            {syn.shortTitle}
-                                          </span>
-                                          <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', opacity: 0.45, flexShrink: 0 }}>→</span>
-                                        </button>
-                                      )
-                                    })()}
-
                                   </div>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                                  <span style={{ fontSize: '0.42rem', color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }}>
+                                    {modeOpen ? '▾' : '▸'}
+                                  </span>
+                                </button>
+                              )}
 
-              </div>
-            )
-          })}
+                              {/* Groups */}
+                              {modeOpen && (
+                                <div style={{ paddingBottom: '0.15rem' }}>
+                                  {mode.groups.map((group, groupIdx) => {
+                                    const groupOpen      = expandedGroups.has(group.id)
+                                    const isUtilityGroup = isToolSlug(group.id) || group.id === 'colagens'
+                                    const secs           = isUtilityGroup ? [] : getSectionsByGroup(group.id)
+                                    if (secs.length === 0 && !isUtilityGroup) return null
+                                    const isSingleSection = !isUtilityGroup && secs.length === 1 && !SYNTHESIS_DEFS[group.id]
+                                    const isDirect        = isUtilityGroup || isSingleSection
+                                    const tool            = getToolAreaBySlug(group.id)
+                                    const directSlug      = isSingleSection ? secs[0].slug : (tool?.slug ?? group.id)
+                                    const directLabel     = isSingleSection ? secs[0].shortTitle : group.label
+                                    const { done, total } = groupProgress(group.id)
+                                    const syn             = !isDirect ? SYNTHESIS_DEFS[group.id] : undefined
+                                    const isInvestigar    = phase.id === 'investigar'
+
+                                    return (
+                                      <div key={group.id} style={{ marginBottom: isInvestigar && groupOpen ? '0.55rem' : 0 }}>
+
+                                        {/* ── Group header ──────────────────── */}
+                                        {isInvestigar && !isDirect ? (
+                                          /* Investigar: circled number + CAPS + subtitle */
+                                          <button
+                                            onClick={() => toggleGroup(group.id)}
+                                            style={{
+                                              width: '100%', border: 'none', cursor: 'pointer',
+                                              background: 'transparent', textAlign: 'left', fontFamily: 'inherit',
+                                              padding: '0.55rem 0.65rem 0.42rem 0.7rem',
+                                              display: 'flex', alignItems: 'flex-start', gap: '0.48rem',
+                                            }}
+                                          >
+                                            {/* Circled number */}
+                                            <span style={{
+                                              width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+                                              border: `1.5px solid ${groupOpen ? mode.color : 'var(--border)'}`,
+                                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                              fontSize: '0.62rem', fontWeight: 900, lineHeight: 1,
+                                              color: groupOpen ? mode.color : 'var(--text-muted)',
+                                              marginTop: '0.05rem',
+                                              transition: 'border-color 0.15s, color 0.15s',
+                                            }}>
+                                              {groupIdx + 1}
+                                            </span>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                              <div style={{
+                                                fontSize: '0.64rem', fontWeight: 900, letterSpacing: '0.06em',
+                                                textTransform: 'uppercase', lineHeight: 1.2,
+                                                color: groupOpen ? mode.color : 'var(--text-secondary)',
+                                                transition: 'color 0.15s',
+                                              }}>
+                                                {group.label}
+                                              </div>
+                                              <div style={{ fontSize: '0.57rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.1rem', lineHeight: 1.2 }}>
+                                                {GROUP_SUBTITLES[group.id] ?? ''}
+                                              </div>
+                                            </div>
+                                            {/* Progress indicator */}
+                                            {done > 0 && (
+                                              <span style={{
+                                                fontSize: '0.6rem', flexShrink: 0, marginTop: '0.1rem', fontWeight: 700,
+                                                color: done === total ? 'var(--success)' : 'var(--accent)',
+                                              }}>
+                                                {done === total ? '✓' : `${done}/${total}`}
+                                              </span>
+                                            )}
+                                          </button>
+                                        ) : (
+                                          /* Other phases: simple row */
+                                          <button
+                                            onClick={() => isDirect ? navigate(directSlug) : toggleGroup(group.id)}
+                                            style={{
+                                              width: '100%', border: 'none', cursor: 'pointer',
+                                              background: isDirect && activeSlug === directSlug ? mode.bgActive : 'transparent',
+                                              borderLeft: `2px solid ${isDirect && activeSlug === directSlug ? mode.color : 'transparent'}`,
+                                              textAlign: 'left', fontFamily: 'inherit',
+                                              padding: '0.3rem 0.55rem 0.28rem 0.85rem',
+                                              display: 'flex', alignItems: 'center', gap: '0.3rem',
+                                            }}
+                                            onMouseEnter={e => { if (!(isDirect && activeSlug === directSlug)) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+                                            onMouseLeave={e => { if (!(isDirect && activeSlug === directSlug)) e.currentTarget.style.background = 'transparent' }}
+                                          >
+                                            <span style={{
+                                              fontSize: '0.56rem', color: 'var(--text-muted)', flexShrink: 0, lineHeight: 1,
+                                              opacity: isDirect ? 0 : 0.45,
+                                            }}>
+                                              {!isDirect ? (groupOpen ? '▾' : '▸') : ''}
+                                            </span>
+                                            <span style={{
+                                              flex: 1, fontSize: '0.7rem',
+                                              fontWeight: isDirect && activeSlug === directSlug ? 600 : 450,
+                                              color: isDirect && activeSlug === directSlug ? mode.color : 'var(--text-secondary)',
+                                              lineHeight: 1.35,
+                                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                            }}>
+                                              {directLabel}
+                                            </span>
+                                            {isDirect && activeSlug === directSlug && (
+                                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: mode.color, flexShrink: 0 }} />
+                                            )}
+                                            {!isDirect && done > 0 && (
+                                              <span style={{
+                                                fontSize: '0.58rem', flexShrink: 0, fontWeight: 700,
+                                                color: done === total ? 'var(--success)' : 'var(--text-muted)',
+                                              }}>
+                                                {done === total ? '✓' : `${done}`}
+                                              </span>
+                                            )}
+                                          </button>
+                                        )}
+
+                                        {/* ── Section list (with vertical line) ── */}
+                                        {!isDirect && groupOpen && (
+                                          <div style={{
+                                            marginLeft: isInvestigar ? '1.5rem' : '1.15rem',
+                                            borderLeft: `1px solid var(--border-subtle)`,
+                                            marginBottom: '0.15rem',
+                                          }}>
+                                            {secs.map((sd, secIdx) => {
+                                              const sec      = sections.find(s => s.slug === sd.slug)
+                                              const isActive = sd.slug === activeSlug
+                                              const dot      = statusDot(sec?.status)
+                                              return (
+                                                <button
+                                                  key={sd.slug}
+                                                  onClick={() => navigate(sd.slug)}
+                                                  style={{
+                                                    width: '100%', border: 'none', fontFamily: 'inherit',
+                                                    background: isActive ? mode.bgActive : 'transparent',
+                                                    borderLeft: `2px solid ${isActive ? mode.color : 'transparent'}`,
+                                                    padding: '0.25rem 0.4rem 0.25rem 0.52rem',
+                                                    display: 'flex', alignItems: 'center', gap: '0.32rem',
+                                                    cursor: 'pointer', textAlign: 'left',
+                                                    marginLeft: '-1px',
+                                                    transition: 'background 0.1s',
+                                                  }}
+                                                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.025)' }}
+                                                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                                                >
+                                                  <span style={{
+                                                    fontSize: '0.6rem', color: 'var(--text-muted)',
+                                                    flexShrink: 0, width: '14px', textAlign: 'right', lineHeight: 1,
+                                                    fontWeight: isActive ? 700 : 400,
+                                                  }}>
+                                                    {secIdx + 1}.
+                                                  </span>
+                                                  <span style={{
+                                                    flex: 1, fontSize: '0.7rem', lineHeight: 1.35,
+                                                    color: isActive ? mode.color : 'var(--text-secondary)',
+                                                    fontWeight: isActive ? 600 : 400,
+                                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                  }}>
+                                                    {sd.shortTitle}
+                                                  </span>
+                                                  <span style={{
+                                                    width: '5px', height: '5px', borderRadius: '50%',
+                                                    background: dot, flexShrink: 0,
+                                                    opacity: isActive ? 1 : 0.6,
+                                                  }} />
+                                                </button>
+                                              )
+                                            })}
+
+                                            {/* Synthesis */}
+                                            {syn && (() => {
+                                              const isSynActive = activeSlug === syn.slug
+                                              return (
+                                                <button
+                                                  onClick={() => navigate(syn.slug)}
+                                                  style={{
+                                                    width: '100%', border: 'none', fontFamily: 'inherit',
+                                                    background: isSynActive ? mode.bgActive : 'transparent',
+                                                    borderLeft: `2px solid ${isSynActive ? mode.color : 'transparent'}`,
+                                                    padding: '0.28rem 0.4rem 0.28rem 0.52rem',
+                                                    display: 'flex', alignItems: 'center', gap: '0.32rem',
+                                                    cursor: 'pointer', textAlign: 'left',
+                                                    marginLeft: '-1px', marginTop: '0.12rem',
+                                                    borderTop: '1px solid var(--border-subtle)',
+                                                    transition: 'background 0.1s',
+                                                  }}
+                                                  onMouseEnter={e => { if (!isSynActive) e.currentTarget.style.background = 'rgba(255,255,255,0.025)' }}
+                                                  onMouseLeave={e => { if (!isSynActive) e.currentTarget.style.background = 'transparent' }}
+                                                >
+                                                  <span style={{ fontSize: '0.62rem', color: isSynActive ? mode.color : 'var(--text-muted)', flexShrink: 0, lineHeight: 1 }}>→</span>
+                                                  <span style={{
+                                                    flex: 1, fontSize: '0.68rem', lineHeight: 1.3,
+                                                    color: isSynActive ? mode.color : 'var(--text-muted)',
+                                                    fontStyle: 'italic',
+                                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                  }}>
+                                                    {syn.shortTitle}
+                                                  </span>
+                                                </button>
+                                              )
+                                            })()}
+                                          </div>
+                                        )}
+
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                  </div>
+                )
+              })}
             </>
           )}
         </nav>

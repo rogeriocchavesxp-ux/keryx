@@ -8,11 +8,25 @@ import type { Project, Section } from '@/types/database'
 
 type BlockType = 'introducao' | 'desenvolvimento' | 'transicao' | 'aplicacao' | 'conclusao'
 
+interface Subponto {
+  id: string
+  text: string
+}
+
+interface PontoPrincipal {
+  id: string
+  text: string
+  subpontos: Subponto[]
+  ilustracao: string
+  aplicacao: string
+}
+
 interface SermonBlock {
   id: string
   type: BlockType
   title: string
   content: string
+  pontos?: PontoPrincipal[]
 }
 
 interface SermonBuilderContent {
@@ -28,53 +42,493 @@ interface Props {
   onAskAI: (prompt: string) => void
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function mkId() { return Math.random().toString(36).slice(2, 10) }
+
+function toRoman(n: number): string {
+  const map: [number, string][] = [
+    [1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],
+    [50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I'],
+  ]
+  let r = '', v = n
+  for (const [val, sym] of map) { while (v >= val) { r += sym; v -= val } }
+  return r
+}
+
+function defaultPontos(): PontoPrincipal[] {
+  return [{ id: mkId(), text: '', subpontos: [{ id: mkId(), text: '' }], ilustracao: '', aplicacao: '' }]
+}
+
+function normalizePontos(raw: unknown): PontoPrincipal[] {
+  if (Array.isArray(raw) && raw.length > 0) return raw as PontoPrincipal[]
+  return defaultPontos()
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const BLOCK_TYPES: { type: BlockType; label: string }[] = [
-  { type: 'introducao',    label: 'Introdução' },
+  { type: 'introducao',     label: 'Introdução' },
   { type: 'desenvolvimento', label: 'Desenvolvimento' },
-  { type: 'transicao',    label: 'Transição' },
-  { type: 'aplicacao',    label: 'Aplicação' },
-  { type: 'conclusao',    label: 'Conclusão' },
+  { type: 'transicao',     label: 'Transição' },
+  { type: 'aplicacao',     label: 'Aplicação' },
+  { type: 'conclusao',     label: 'Conclusão' },
 ]
 
 const TYPE_COLOR: Record<BlockType, string> = {
-  introducao:     'var(--accent)',
+  introducao:      'var(--accent)',
   desenvolvimento: 'var(--ai)',
-  transicao:      'var(--text-muted)',
-  aplicacao:      '#6db8a0',
-  conclusao:      '#c47c5a',
+  transicao:       'var(--text-muted)',
+  aplicacao:       '#6db8a0',
+  conclusao:       '#c47c5a',
 }
 
 const DEFAULT_BLOCKS: SermonBlock[] = [
   { id: 'b1', type: 'introducao',     title: 'Introdução',     content: '' },
-  { id: 'b2', type: 'desenvolvimento', title: 'Desenvolvimento', content: '' },
+  { id: 'b2', type: 'desenvolvimento', title: 'Desenvolvimento', content: '', pontos: defaultPontos() },
   { id: 'b3', type: 'conclusao',      title: 'Conclusão',      content: '' },
 ]
 
-function uid() {
-  return Math.random().toString(36).slice(2, 10)
+function blockHasContent(block: SermonBlock): boolean {
+  if (block.type === 'desenvolvimento') {
+    return (block.pontos ?? []).some(p =>
+      p.text.trim() || p.subpontos.some(s => s.text.trim()) || p.ilustracao.trim() || p.aplicacao.trim()
+    )
+  }
+  return block.content.trim().length > 0
 }
 
-function dotColor(content: string): string {
-  if (!content.trim()) return 'var(--border)'
-  if (content.trim().length < 80) return 'var(--accent)'
-  return 'var(--success)'
+function dotColor(block: SermonBlock): string {
+  if (!blockHasContent(block)) return 'var(--border)'
+  if (block.type === 'desenvolvimento') {
+    const allFilled = (block.pontos ?? []).every(p => p.text.trim() && p.subpontos.some(s => s.text.trim()))
+    return allFilled ? 'var(--success)' : 'var(--accent)'
+  }
+  return block.content.trim().length < 80 ? 'var(--accent)' : 'var(--success)'
 }
 
 function blockPrompt(block: SermonBlock, project: Project): string {
   const ref = `${project.book} ${project.passage_ref}`
   const map: Record<BlockType, string> = {
-    introducao:     `Redija uma introdução pastoral para o sermão de ${ref}. Capture atenção, revele a necessidade humana e conduza naturalmente ao texto. Tom: acessível, pastoral e cristocêntrico.`,
-    desenvolvimento: `Desenvolva o ponto homilético "${block.title}" do sermão de ${ref}. Exponha o texto, argumente teologicamente e aplique pastoralmente. Progressão clara.`,
-    transicao:      `Crie uma transição natural entre os movimentos do sermão de ${ref}. Resuma o que foi dito e abra o próximo ponto com força e fluidez.`,
-    aplicacao:      `Desenvolva aplicações concretas para "${block.title}" a partir de ${ref}. Aplicações de fé, arrependimento, consolo e obediência — específicas, evangélicas, pastorais.`,
-    conclusao:      `Redija a conclusão do sermão de ${ref}. Sintetize a ideia central, reforce o argumento e conduza o ouvinte a uma resposta bíblica em Cristo.`,
+    introducao:      `Redija uma introdução pastoral para o sermão de ${ref}. Capture atenção, revele a necessidade humana e conduza naturalmente ao texto. Tom acessível, pastoral e cristocêntrico.`,
+    desenvolvimento: `Sugira pontos principais para o sermão de ${ref}. Cada ponto deve ser claro, teológico, progressivo e derivado do texto. Inclua subpontos e sugestão de aplicação para cada um.`,
+    transicao:       `Crie uma transição natural entre os movimentos do sermão de ${ref}. Resuma o que foi dito e abra o próximo ponto com força e fluidez.`,
+    aplicacao:       `Desenvolva aplicações concretas para "${block.title}" a partir de ${ref}. Aplicações de fé, arrependimento, consolo e obediência — específicas, evangélicas e pastorais.`,
+    conclusao:       `Redija a conclusão do sermão de ${ref}. Sintetize a ideia central, reforce o argumento e conduza o ouvinte a uma resposta bíblica em Cristo.`,
   }
   return map[block.type]
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
+// ── SmallBtn ───────────────────────────────────────────────────────────────
+
+interface SmallBtnProps {
+  onClick: () => void
+  children: React.ReactNode
+  color?: string
+  disabled?: boolean
+  compact?: boolean
+  title?: string
+}
+
+function SmallBtn({ onClick, children, color = 'var(--text-muted)', disabled = false, compact = false, title }: SmallBtnProps) {
+  return (
+    <button
+      onClick={disabled ? undefined : onClick}
+      title={title}
+      style={{
+        background: 'transparent',
+        border: `1px solid ${disabled ? 'transparent' : color}`,
+        borderRadius: '4px',
+        color: disabled ? 'var(--border)' : color,
+        cursor: disabled ? 'default' : 'pointer',
+        fontFamily: 'inherit',
+        fontSize: compact ? '0.64rem' : '0.68rem',
+        fontWeight: 700,
+        padding: compact ? '0.12rem 0.35rem' : '0.15rem 0.42rem',
+        flexShrink: 0,
+        lineHeight: 1.2,
+        whiteSpace: 'nowrap',
+        transition: 'opacity 0.1s',
+        opacity: disabled ? 0.3 : 1,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ── DesenvolvimentoEditor ─────────────────────────────────────────────────
+
+interface DevEditorProps {
+  pontos: PontoPrincipal[]
+  project: Project
+  onUpdate: (pontos: PontoPrincipal[]) => void
+  onAskAI: (prompt: string) => void
+}
+
+function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditorProps) {
+  const ref = `${project.book} ${project.passage_ref}`
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set([pontos[0]?.id].filter(Boolean)))
+
+  const toggle = (id: string) =>
+    setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+
+  // ── Pontos
+
+  function addPonto() {
+    const p: PontoPrincipal = { id: mkId(), text: '', subpontos: [{ id: mkId(), text: '' }], ilustracao: '', aplicacao: '' }
+    setExpanded(prev => new Set([...prev, p.id]))
+    onUpdate([...pontos, p])
+  }
+
+  function patch(id: string, data: Partial<PontoPrincipal>) {
+    onUpdate(pontos.map(p => p.id === id ? { ...p, ...data } : p))
+  }
+
+  function movePonto(id: string, dir: 'up' | 'down') {
+    const i = pontos.findIndex(p => p.id === id)
+    if (i < 0) return
+    const arr = [...pontos]
+    const swap = dir === 'up' ? i - 1 : i + 1
+    if (swap < 0 || swap >= arr.length) return
+    ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
+    onUpdate(arr)
+  }
+
+  function deletePonto(id: string) {
+    onUpdate(pontos.filter(p => p.id !== id))
+  }
+
+  function demotePonto(id: string) {
+    const i = pontos.findIndex(p => p.id === id)
+    if (i <= 0) return
+    const target = pontos[i]
+    const arr = pontos.filter(p => p.id !== id)
+    arr[i - 1] = { ...arr[i - 1], subpontos: [...arr[i - 1].subpontos, { id: mkId(), text: target.text }] }
+    onUpdate(arr)
+  }
+
+  // ── Subpontos
+
+  function addSubponto(pontoId: string) {
+    const p = pontos.find(p => p.id === pontoId)!
+    if (p.subpontos.length >= 7) return
+    patch(pontoId, { subpontos: [...p.subpontos, { id: mkId(), text: '' }] })
+  }
+
+  function updateSub(pontoId: string, subId: string, text: string) {
+    const p = pontos.find(p => p.id === pontoId)!
+    patch(pontoId, { subpontos: p.subpontos.map(s => s.id === subId ? { ...s, text } : s) })
+  }
+
+  function moveSub(pontoId: string, subId: string, dir: 'up' | 'down') {
+    const p = pontos.find(p => p.id === pontoId)!
+    const i = p.subpontos.findIndex(s => s.id === subId)
+    if (i < 0) return
+    const arr = [...p.subpontos]
+    const swap = dir === 'up' ? i - 1 : i + 1
+    if (swap < 0 || swap >= arr.length) return
+    ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
+    patch(pontoId, { subpontos: arr })
+  }
+
+  function removeSub(pontoId: string, subId: string) {
+    const p = pontos.find(p => p.id === pontoId)!
+    patch(pontoId, { subpontos: p.subpontos.filter(s => s.id !== subId) })
+  }
+
+  function promoteSub(pontoId: string, subId: string) {
+    const i = pontos.findIndex(p => p.id === pontoId)
+    const p = pontos[i]
+    const sub = p.subpontos.find(s => s.id === subId)!
+    const newPonto: PontoPrincipal = { id: mkId(), text: sub.text, subpontos: [], ilustracao: '', aplicacao: '' }
+    const arr = pontos.map(pt => pt.id === pontoId ? { ...pt, subpontos: pt.subpontos.filter(s => s.id !== subId) } : pt)
+    arr.splice(i + 1, 0, newPonto)
+    setExpanded(prev => new Set([...prev, newPonto.id]))
+    onUpdate(arr)
+  }
+
+  // ── AI
+
+  function aiPonto(p: PontoPrincipal) {
+    const ctx = p.text.trim() ? `"${p.text}"` : 'este ponto'
+    onAskAI(`Avalie e melhore o ponto principal ${ctx} do sermão de ${ref}. O ponto deve ser claro, arguir a partir do texto e ter progressão lógica. Sugira também subpontos e estrutura de desenvolvimento.`)
+  }
+
+  function aiSubpontos(p: PontoPrincipal) {
+    onAskAI(`Gere subpontos para o ponto "${p.text || 'principal'}" do sermão de ${ref}. Liste argumentos e evidências textuais que desenvolvam esse ponto com clareza e fidelidade exegética.`)
+  }
+
+  function aiSubponto(p: PontoPrincipal, s: Subponto) {
+    const ctx = s.text.trim() ? `"${s.text}"` : 'este subponto'
+    onAskAI(`Desenvolva o subponto ${ctx} dentro do ponto "${p.text || 'principal'}" do sermão de ${ref}. Argumento textual, explicação e evidência bíblica em linguagem pastoral.`)
+  }
+
+  function aiIlustracao(p: PontoPrincipal) {
+    onAskAI(`Sugira uma ilustração, analogia ou exemplo histórico para o ponto "${p.text || 'principal'}" do sermão de ${ref}. Breve, pastoral e conectada ao texto — ilumina sem dominar.`)
+  }
+
+  function aiAplicacao(p: PontoPrincipal) {
+    onAskAI(`Desenvolva aplicações pastorais para o ponto "${p.text || 'principal'}" do sermão de ${ref}. Responda: Como confronta? Como consola? Como chama à fé? Como revela Cristo? Como transforma o ouvinte?`)
+  }
+
+  function aiRevisao() {
+    const sumario = pontos.map((p, i) => `${i + 1}. ${p.text || '(sem título)'}`).join('; ')
+    onAskAI(`Revise a coerência homilética deste desenvolvimento do sermão de ${ref}. Pontos: ${sumario}. Avalie progressão lógica, cristocentrismo, fidelidade à perícope, equilíbrio exposição/aplicação e risco de moralismo.`)
+  }
+
+  const secLabel: React.CSSProperties = {
+    fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.1em',
+    textTransform: 'uppercase', color: 'var(--text-muted)',
+  }
+
+  const AI_COLOR = 'var(--ai)'
+
+  return (
+    <div style={{ padding: '0.65rem 0.9rem 0.85rem' }}>
+
+      {pontos.map((ponto, pi) => {
+        const isOpen   = expanded.has(ponto.id)
+        const isFirst  = pi === 0
+        const isLast   = pi === pontos.length - 1
+        const hasText  = ponto.text.trim().length > 0
+        const subCount = ponto.subpontos.length
+
+        return (
+          <div
+            key={ponto.id}
+            style={{
+              border: '1px solid var(--border-subtle)',
+              borderLeft: `3px solid ${AI_COLOR}`,
+              borderRadius: '6px',
+              background: 'var(--surface-2)',
+              marginBottom: '0.55rem',
+              overflow: 'hidden',
+            }}
+          >
+            {/* ── Ponto header ─────────────────────────────────────── */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.35rem',
+              padding: '0.5rem 0.6rem',
+              borderBottom: isOpen ? '1px solid var(--border-subtle)' : 'none',
+            }}>
+              <button
+                onClick={() => toggle(ponto.id)}
+                style={{
+                  background: 'none', border: 'none', color: 'var(--text-muted)',
+                  cursor: 'pointer', fontSize: '0.6rem', padding: 0, flexShrink: 0,
+                  transition: 'transform 0.15s',
+                  transform: isOpen ? 'rotate(90deg)' : 'none',
+                  lineHeight: 1,
+                }}
+              >▶</button>
+
+              <span style={{ fontSize: '0.6rem', color: AI_COLOR, fontWeight: 900, flexShrink: 0, opacity: 0.65, minWidth: '16px' }}>
+                {toRoman(pi + 1)}.
+              </span>
+
+              {isOpen ? (
+                <input
+                  value={ponto.text}
+                  onChange={e => patch(ponto.id, { text: e.target.value })}
+                  placeholder={`Ponto principal ${pi + 1}…`}
+                  style={{
+                    flex: 1, background: 'transparent', border: 'none',
+                    color: 'var(--text-primary)', fontFamily: 'inherit',
+                    fontSize: '0.88rem', fontWeight: 600, outline: 'none', padding: 0,
+                  }}
+                />
+              ) : (
+                <span
+                  onClick={() => toggle(ponto.id)}
+                  style={{
+                    flex: 1, fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer',
+                    color: hasText ? 'var(--text-primary)' : 'var(--text-muted)',
+                    fontStyle: hasText ? 'normal' : 'italic',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {ponto.text || `Ponto principal ${pi + 1}`}
+                </span>
+              )}
+
+              {!isOpen && subCount > 0 && (
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                  {subCount} sub
+                </span>
+              )}
+
+              <SmallBtn onClick={() => aiPonto(ponto)} color={AI_COLOR} compact title="Sugerir / avaliar ponto">IA</SmallBtn>
+              <SmallBtn onClick={() => movePonto(ponto.id, 'up')}   disabled={isFirst} color="var(--text-muted)" compact>↑</SmallBtn>
+              <SmallBtn onClick={() => movePonto(ponto.id, 'down')} disabled={isLast}  color="var(--text-muted)" compact>↓</SmallBtn>
+              <SmallBtn onClick={() => deletePonto(ponto.id)} color="var(--error)" compact title="Excluir ponto">✕</SmallBtn>
+            </div>
+
+            {/* ── Ponto body ───────────────────────────────────────── */}
+            {isOpen && (
+              <div style={{ padding: '0.7rem 0.75rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+                {/* Subpontos */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <span style={secLabel}>Subpontos</span>
+                    <div style={{ display: 'flex', gap: '0.3rem' }}>
+                      <SmallBtn onClick={() => aiSubpontos(ponto)} color={AI_COLOR} compact>IA</SmallBtn>
+                      {ponto.subpontos.length < 7 && (
+                        <SmallBtn onClick={() => addSubponto(ponto.id)} color={AI_COLOR} compact>+ Subponto</SmallBtn>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
+                    {ponto.subpontos.map((sub, si) => (
+                      <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '0.28rem' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', flexShrink: 0, width: '16px', textAlign: 'right', lineHeight: 1 }}>
+                          {si + 1}.
+                        </span>
+                        <input
+                          value={sub.text}
+                          onChange={e => updateSub(ponto.id, sub.id, e.target.value)}
+                          placeholder={`Subponto ${si + 1}…`}
+                          style={{
+                            flex: 1, background: 'var(--surface-3)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: '4px', color: 'var(--text-primary)',
+                            fontFamily: 'inherit', fontSize: '0.84rem',
+                            padding: '0.27rem 0.48rem', outline: 'none',
+                          }}
+                          onFocus={e => e.currentTarget.style.borderColor = AI_COLOR}
+                          onBlur={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+                        />
+                        <SmallBtn onClick={() => moveSub(ponto.id, sub.id, 'up')}   disabled={si === 0}                         color="var(--text-muted)" compact>↑</SmallBtn>
+                        <SmallBtn onClick={() => moveSub(ponto.id, sub.id, 'down')} disabled={si === ponto.subpontos.length - 1} color="var(--text-muted)" compact>↓</SmallBtn>
+                        <SmallBtn onClick={() => aiSubponto(ponto, sub)}                  color={AI_COLOR}      compact title="Desenvolver subponto">IA</SmallBtn>
+                        <SmallBtn onClick={() => promoteSub(ponto.id, sub.id)}            color="var(--accent)" compact title="Promover a Ponto Principal">↗</SmallBtn>
+                        <SmallBtn onClick={() => removeSub(ponto.id, sub.id)}             color="var(--error)"  compact title="Remover subponto">✕</SmallBtn>
+                      </div>
+                    ))}
+
+                    {ponto.subpontos.length === 0 && (
+                      <button
+                        onClick={() => addSubponto(ponto.id)}
+                        style={{
+                          background: 'transparent', border: '1px dashed var(--border-subtle)',
+                          borderRadius: '4px', color: 'var(--text-muted)', cursor: 'pointer',
+                          fontFamily: 'inherit', fontSize: '0.78rem', padding: '0.28rem 0.55rem',
+                          textAlign: 'left',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = AI_COLOR; e.currentTarget.style.color = AI_COLOR }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+                      >
+                        + Adicionar subponto
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ilustração */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                    <span style={secLabel}>Ilustração</span>
+                    <SmallBtn onClick={() => aiIlustracao(ponto)} color={AI_COLOR} compact>IA</SmallBtn>
+                  </div>
+                  <textarea
+                    value={ponto.ilustracao}
+                    onChange={e => patch(ponto.id, { ilustracao: e.target.value })}
+                    placeholder="Ilustração, analogia, exemplo histórico, citação ou caso pastoral…"
+                    rows={3}
+                    style={{
+                      width: '100%', background: 'var(--surface-3)',
+                      border: '1px solid var(--border-subtle)', borderRadius: '5px',
+                      color: 'var(--text-primary)', fontFamily: 'inherit',
+                      fontSize: '0.84rem', lineHeight: 1.65, padding: '0.42rem 0.55rem',
+                      resize: 'vertical', outline: 'none',
+                    }}
+                    onFocus={e => e.currentTarget.style.borderColor = AI_COLOR}
+                    onBlur={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+                  />
+                </div>
+
+                {/* Aplicação */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                    <span style={secLabel}>Aplicação</span>
+                    <SmallBtn onClick={() => aiAplicacao(ponto)} color="#6db8a0" compact>IA</SmallBtn>
+                  </div>
+                  <textarea
+                    value={ponto.aplicacao}
+                    onChange={e => patch(ponto.id, { aplicacao: e.target.value })}
+                    placeholder="Como isso confronta, consola, chama à fé, revela Cristo e deve mudar a vida do ouvinte?"
+                    rows={3}
+                    style={{
+                      width: '100%', background: 'var(--surface-3)',
+                      border: '1px solid var(--border-subtle)', borderRadius: '5px',
+                      color: 'var(--text-primary)', fontFamily: 'inherit',
+                      fontSize: '0.84rem', lineHeight: 1.65, padding: '0.42rem 0.55rem',
+                      resize: 'vertical', outline: 'none',
+                    }}
+                    onFocus={e => e.currentTarget.style.borderColor = '#6db8a0'}
+                    onBlur={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+                  />
+                </div>
+
+                {/* Demote */}
+                {!isFirst && (
+                  <div>
+                    <button
+                      onClick={() => demotePonto(ponto.id)}
+                      style={{
+                        background: 'none', border: 'none', color: 'var(--text-muted)',
+                        cursor: 'pointer', fontSize: '0.72rem', fontFamily: 'inherit',
+                        padding: 0, textDecoration: 'underline dotted',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                    >
+                      Transformar em subponto do anterior
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* ── Footer ─────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', marginTop: '0.2rem', flexWrap: 'wrap' }}>
+        <button
+          onClick={addPonto}
+          style={{
+            background: 'transparent', border: '1px dashed var(--border)',
+            borderRadius: '5px', color: 'var(--text-muted)',
+            cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.8rem',
+            padding: '0.32rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.3rem',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = AI_COLOR; e.currentTarget.style.color = AI_COLOR }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          + Ponto Principal
+        </button>
+        <button
+          onClick={aiRevisao}
+          style={{
+            background: 'transparent', border: '1px solid var(--border-subtle)',
+            borderRadius: '5px', color: 'var(--text-muted)',
+            cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.8rem',
+            padding: '0.32rem 0.7rem',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = AI_COLOR; e.currentTarget.style.color = AI_COLOR }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          Revisar coerência
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── SermonBuilderWorkspace ────────────────────────────────────────────────
 
 export default function SermonBuilderWorkspace({
   project, userId, existingSection, onUpdate, onAskAI,
@@ -84,43 +538,44 @@ export default function SermonBuilderWorkspace({
   const loadBlocks = useCallback((): SermonBlock[] => {
     const c = existingSection?.content as SermonBuilderContent | null
     if (c?.type === 'sermon_builder' && Array.isArray(c.blocks) && c.blocks.length > 0) {
-      return c.blocks
+      return c.blocks.map(b =>
+        b.type === 'desenvolvimento' ? { ...b, pontos: normalizePontos(b.pontos) } : b
+      )
     }
     return DEFAULT_BLOCKS
   }, [existingSection])
 
-  const [blocks, setBlocks] = useState<SermonBlock[]>(loadBlocks)
-  const [saving, setSaving] = useState(false)
-  const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [blocks,     setBlocks]     = useState<SermonBlock[]>(loadBlocks)
+  const [saving,     setSaving]     = useState(false)
+  const [savedAt,    setSavedAt]    = useState<Date | null>(null)
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
-  const [renameValue, setRenameValue] = useState('')
-  const [addOpen, setAddOpen] = useState(false)
+  const [renameVal,  setRenameVal]  = useState('')
+  const [addOpen,    setAddOpen]    = useState(false)
 
-  const blocksRef = useRef(blocks)
+  const blocksRef   = useRef(blocks)
   blocksRef.current = blocks
-  const sectionIdRef = useRef(existingSection?.id)
+  const sectionIdRef   = useRef(existingSection?.id)
   sectionIdRef.current = existingSection?.id
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Close menus on outside click
   useEffect(() => {
-    const handler = () => { setActiveMenu(null); setAddOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const h = () => { setActiveMenu(null); setAddOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
   }, [])
 
   const performSave = useCallback(async (current: SermonBlock[]) => {
     setSaving(true)
-    const hasContent = current.some(b => b.content.trim().length > 0)
+    const hasContent = current.some(blockHasContent)
     const payload = {
       project_id: project.id,
-      user_id: userId,
-      slug: 'sermao_dispositio',
-      module: 'dispositio' as const,
-      title: 'Sermão · Disposição',
-      content: { type: 'sermon_builder', blocks: current } as unknown as Record<string, unknown>,
-      status: (hasContent ? 'draft' : 'empty') as 'empty' | 'draft' | 'reviewed',
+      user_id:    userId,
+      slug:       'sermao_dispositio',
+      module:     'dispositio' as const,
+      title:      'Sermão · Disposição',
+      content:    { type: 'sermon_builder', blocks: current } as unknown as Record<string, unknown>,
+      status:     (hasContent ? 'draft' : 'empty') as 'empty' | 'draft' | 'reviewed',
     }
     const id = sectionIdRef.current
     if (id) {
@@ -145,31 +600,37 @@ export default function SermonBuilderWorkspace({
     scheduleSave(blocksRef.current.map(b => b.id === id ? { ...b, content } : b))
   }
 
+  function updatePontos(id: string, pontos: PontoPrincipal[]) {
+    scheduleSave(blocksRef.current.map(b => b.id === id ? { ...b, pontos } : b))
+  }
+
   function addBlock(type: BlockType) {
     const label = BLOCK_TYPES.find(t => t.type === type)!.label
-    const newBlock: SermonBlock = { id: uid(), type, title: label, content: '' }
-    scheduleSave([...blocksRef.current, newBlock])
+    const nb: SermonBlock = type === 'desenvolvimento'
+      ? { id: mkId(), type, title: label, content: '', pontos: defaultPontos() }
+      : { id: mkId(), type, title: label, content: '' }
+    scheduleSave([...blocksRef.current, nb])
     setAddOpen(false)
   }
 
   function moveBlock(id: string, dir: 'up' | 'down') {
-    const idx = blocksRef.current.findIndex(b => b.id === id)
-    if (idx < 0) return
-    const next = [...blocksRef.current]
-    const swap = dir === 'up' ? idx - 1 : idx + 1
-    if (swap < 0 || swap >= next.length) return
-    ;[next[idx], next[swap]] = [next[swap], next[idx]]
-    scheduleSave(next)
+    const i = blocksRef.current.findIndex(b => b.id === id)
+    if (i < 0) return
+    const arr = [...blocksRef.current]
+    const swap = dir === 'up' ? i - 1 : i + 1
+    if (swap < 0 || swap >= arr.length) return
+    ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
+    scheduleSave(arr)
   }
 
   function duplicateBlock(id: string) {
-    const idx = blocksRef.current.findIndex(b => b.id === id)
-    if (idx < 0) return
-    const src = blocksRef.current[idx]
-    const copy: SermonBlock = { ...src, id: uid(), title: src.title + ' (cópia)' }
-    const next = [...blocksRef.current]
-    next.splice(idx + 1, 0, copy)
-    scheduleSave(next)
+    const i = blocksRef.current.findIndex(b => b.id === id)
+    if (i < 0) return
+    const src = blocksRef.current[i]
+    const copy: SermonBlock = { ...src, id: mkId(), title: src.title + ' (cópia)' }
+    const arr = [...blocksRef.current]
+    arr.splice(i + 1, 0, copy)
+    scheduleSave(arr)
   }
 
   function deleteBlock(id: string) {
@@ -178,25 +639,22 @@ export default function SermonBuilderWorkspace({
   }
 
   function startRename(id: string, current: string) {
-    setRenamingId(id)
-    setRenameValue(current)
-    setActiveMenu(null)
+    setRenamingId(id); setRenameVal(current); setActiveMenu(null)
   }
 
   function commitRename(id: string) {
-    const trimmed = renameValue.trim()
-    if (trimmed) scheduleSave(blocksRef.current.map(b => b.id === id ? { ...b, title: trimmed } : b))
+    const t = renameVal.trim()
+    if (t) scheduleSave(blocksRef.current.map(b => b.id === id ? { ...b, title: t } : b))
     setRenamingId(null)
   }
 
-  const savedLabel = saving ? 'salvando…' : savedAt
-    ? `salvo ${savedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-    : ''
+  const savedLabel = saving ? 'salvando…'
+    : savedAt ? `salvo ${savedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''
 
   return (
-    <div style={{ padding: '2rem clamp(1.2rem, 3vw, 2.5rem) 5rem', maxWidth: '820px', margin: '0 auto' }}>
+    <div style={{ padding: '2rem clamp(1.2rem, 3vw, 2.5rem) 5rem', maxWidth: '860px', margin: '0 auto' }}>
 
-      {/* ── Header ────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div style={{ marginBottom: '1.75rem' }}>
         <div style={{ fontSize: '0.65rem', color: 'var(--ai)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 900, marginBottom: '0.3rem' }}>
           Sermão · Disposição
@@ -205,31 +663,32 @@ export default function SermonBuilderWorkspace({
           Construtor Homilético
         </h1>
         <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.65, maxWidth: '600px' }}>
-          Organize o sermão em blocos modulares. Adicione, renomeie, reordene e desenvolva cada movimento da mensagem.
+          Organize o sermão em blocos modulares. O bloco Desenvolvimento é estruturado em Pontos Principais, Subpontos, Ilustração e Aplicação.
         </p>
         <div style={{ marginTop: '0.65rem', fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
           {project.book} {project.passage_ref} · {savedLabel}
         </div>
       </div>
 
-      {/* ── Blocks ────────────────────────────────────────────────────────── */}
+      {/* Blocks */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {blocks.map((block, idx) => {
-          const color = TYPE_COLOR[block.type]
+          const color   = TYPE_COLOR[block.type]
           const isFirst = idx === 0
-          const isLast = idx === blocks.length - 1
+          const isLast  = idx === blocks.length - 1
           const menuOpen = activeMenu === block.id
+          const isDev    = block.type === 'desenvolvimento'
 
           return (
             <div
               key={block.id}
               style={{
-                border: `1px solid var(--border-subtle)`,
+                border: '1px solid var(--border-subtle)',
                 borderLeft: `3px solid ${color}`,
                 borderRadius: '7px',
                 background: 'var(--surface)',
-                overflow: 'visible',
                 position: 'relative',
+                overflow: 'visible',
               }}
             >
               {/* Block header */}
@@ -238,23 +697,18 @@ export default function SermonBuilderWorkspace({
                 padding: '0.6rem 0.75rem',
                 borderBottom: '1px solid var(--border-subtle)',
               }}>
-                {/* Status dot */}
                 <span style={{
                   width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
-                  background: dotColor(block.content),
+                  background: dotColor(block),
                 }} />
 
-                {/* Title */}
                 {renamingId === block.id ? (
                   <input
                     autoFocus
-                    value={renameValue}
-                    onChange={e => setRenameValue(e.target.value)}
+                    value={renameVal}
+                    onChange={e => setRenameVal(e.target.value)}
                     onBlur={() => commitRename(block.id)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') commitRename(block.id)
-                      if (e.key === 'Escape') setRenamingId(null)
-                    }}
+                    onKeyDown={e => { if (e.key === 'Enter') commitRename(block.id); if (e.key === 'Escape') setRenamingId(null) }}
                     style={{
                       flex: 1, background: 'var(--surface-2)', border: `1px solid ${color}`,
                       borderRadius: '4px', color: 'var(--text-primary)', fontFamily: 'inherit',
@@ -270,7 +724,6 @@ export default function SermonBuilderWorkspace({
                   </span>
                 )}
 
-                {/* Type badge */}
                 <span style={{
                   fontSize: '0.6rem', color, textTransform: 'uppercase',
                   letterSpacing: '0.08em', fontWeight: 700, opacity: 0.7, flexShrink: 0,
@@ -278,7 +731,6 @@ export default function SermonBuilderWorkspace({
                   {BLOCK_TYPES.find(t => t.type === block.type)?.label}
                 </span>
 
-                {/* ? help */}
                 <button
                   onClick={() => onAskAI(`Me oriente sobre como desenvolver "${block.title}" no sermão de ${project.book} ${project.passage_ref}. Dê princípios homiléticos, exemplos e perguntas reflexivas.`)}
                   style={{
@@ -289,10 +741,9 @@ export default function SermonBuilderWorkspace({
                   }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = color}
                   onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
-                  title="Ajuda"
+                  title="Orientação homilética"
                 >?</button>
 
-                {/* Gerar */}
                 <button
                   onClick={() => onAskAI(blockPrompt(block, project))}
                   style={{
@@ -300,13 +751,10 @@ export default function SermonBuilderWorkspace({
                     color, cursor: 'pointer', fontFamily: 'inherit',
                     fontSize: '0.72rem', fontWeight: 700, padding: '0.18rem 0.6rem', flexShrink: 0,
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = `rgba(124,156,191,0.08)`}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   Gerar
                 </button>
 
-                {/* Actions menu toggle */}
                 <button
                   onMouseDown={e => { e.stopPropagation(); setActiveMenu(menuOpen ? null : block.id); setAddOpen(false) }}
                   style={{
@@ -317,10 +765,8 @@ export default function SermonBuilderWorkspace({
                   }}
                   onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--surface-2)' }}
                   onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
-                  title="Ações"
                 >⋮</button>
 
-                {/* Dropdown menu */}
                 {menuOpen && (
                   <div
                     onMouseDown={e => e.stopPropagation()}
@@ -332,11 +778,11 @@ export default function SermonBuilderWorkspace({
                     }}
                   >
                     {([
-                      { label: 'Renomear', action: () => startRename(block.id, block.title) },
-                      { label: 'Mover para cima', action: () => { moveBlock(block.id, 'up'); setActiveMenu(null) }, disabled: isFirst },
+                      { label: 'Renomear',         action: () => startRename(block.id, block.title) },
+                      { label: 'Mover para cima',  action: () => { moveBlock(block.id, 'up'); setActiveMenu(null) }, disabled: isFirst },
                       { label: 'Mover para baixo', action: () => { moveBlock(block.id, 'down'); setActiveMenu(null) }, disabled: isLast },
-                      { label: 'Duplicar seção', action: () => { duplicateBlock(block.id); setActiveMenu(null) } },
-                      { label: 'Excluir seção', action: () => deleteBlock(block.id), danger: true },
+                      { label: 'Duplicar',         action: () => { duplicateBlock(block.id); setActiveMenu(null) } },
+                      { label: 'Excluir',          action: () => deleteBlock(block.id), danger: true },
                     ] as Array<{ label: string; action: () => void; disabled?: boolean; danger?: boolean }>).map(item => (
                       <button
                         key={item.label}
@@ -346,8 +792,7 @@ export default function SermonBuilderWorkspace({
                           textAlign: 'left', padding: '0.42rem 0.65rem', borderRadius: '5px',
                           color: item.danger ? 'var(--error)' : item.disabled ? 'var(--text-muted)' : 'var(--text-secondary)',
                           cursor: item.disabled ? 'not-allowed' : 'pointer',
-                          fontFamily: 'inherit', fontSize: '0.8rem',
-                          opacity: item.disabled ? 0.4 : 1,
+                          fontFamily: 'inherit', fontSize: '0.8rem', opacity: item.disabled ? 0.4 : 1,
                         }}
                         onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = 'var(--surface-3)' }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
@@ -360,24 +805,33 @@ export default function SermonBuilderWorkspace({
               </div>
 
               {/* Content area */}
-              <textarea
-                value={block.content}
-                onChange={e => updateContent(block.id, e.target.value)}
-                placeholder={`Escreva o ${block.title.toLowerCase()}...`}
-                style={{
-                  width: '100%', minHeight: '110px',
-                  background: 'transparent', border: 'none',
-                  color: 'var(--text-primary)', fontFamily: 'inherit',
-                  fontSize: '0.92rem', lineHeight: 1.75,
-                  padding: '0.85rem 1rem', resize: 'vertical', outline: 'none',
-                }}
-              />
+              {isDev ? (
+                <DesenvolvimentoEditor
+                  pontos={block.pontos ?? defaultPontos()}
+                  project={project}
+                  onUpdate={pontos => updatePontos(block.id, pontos)}
+                  onAskAI={onAskAI}
+                />
+              ) : (
+                <textarea
+                  value={block.content}
+                  onChange={e => updateContent(block.id, e.target.value)}
+                  placeholder={`Escreva o ${block.title.toLowerCase()}…`}
+                  style={{
+                    width: '100%', minHeight: '110px',
+                    background: 'transparent', border: 'none',
+                    color: 'var(--text-primary)', fontFamily: 'inherit',
+                    fontSize: '0.92rem', lineHeight: 1.75,
+                    padding: '0.85rem 1rem', resize: 'vertical', outline: 'none',
+                  }}
+                />
+              )}
             </div>
           )
         })}
       </div>
 
-      {/* ── Add section ───────────────────────────────────────────────────── */}
+      {/* Add section */}
       <div style={{ marginTop: '1rem', position: 'relative', display: 'inline-block' }}>
         <button
           onMouseDown={e => { e.stopPropagation(); setAddOpen(o => !o); setActiveMenu(null) }}
@@ -425,7 +879,6 @@ export default function SermonBuilderWorkspace({
           </div>
         )}
       </div>
-
     </div>
   )
 }

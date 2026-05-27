@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import type { Project, Section } from '@/types/database'
@@ -197,6 +197,24 @@ function toolProgress(groupId: string): { done: number; total: number } {
   return isToolSlug(groupId) ? { done: 0, total: 1 } : { done: 0, total: 0 }
 }
 
+// ── Resize handle ─────────────────────────────────────────────────────────
+
+function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: '4px', flexShrink: 0, cursor: 'col-resize', zIndex: 10,
+        background: hover ? 'var(--border)' : 'var(--border-subtle)',
+        transition: 'background 0.12s',
+      }}
+    />
+  )
+}
+
 // ── Componente principal ────────────────────────────────────────────────────
 
 export default function WorkspaceClient({ user, project, initialSections }: Props) {
@@ -208,6 +226,74 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(['preparar_espiritual']))
   const [aiOpen, setAiOpen] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
+
+  // Panel layout
+  const [sidebarWidth, setSidebarWidth] = useState(176)
+  const [referenceWidth, setReferenceWidth] = useState(280)
+  const [aiWidth, setAiWidth] = useState(308)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [referenceCollapsed, setReferenceCollapsed] = useState(false)
+  const [focusMode, setFocusMode] = useState(false)
+
+  const sidebarWidthRef = useRef(176)
+  const referenceWidthRef = useRef(280)
+  const aiWidthRef = useRef(308)
+  sidebarWidthRef.current = sidebarWidth
+  referenceWidthRef.current = referenceWidth
+  aiWidthRef.current = aiWidth
+
+  useEffect(() => {
+    const sw = localStorage.getItem('keryx_sidebar_w')
+    const rw = localStorage.getItem('keryx_ref_w')
+    const aw = localStorage.getItem('keryx_ai_w')
+    const sc = localStorage.getItem('keryx_sidebar_c')
+    if (sw) setSidebarWidth(Number(sw))
+    if (rw) setReferenceWidth(Number(rw))
+    if (aw) setAiWidth(Number(aw))
+    if (sc) setSidebarCollapsed(sc === '1')
+  }, [])
+
+  const startSidebarResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX; const startW = sidebarWidthRef.current
+    const onMove = (ev: MouseEvent) => {
+      const w = Math.max(120, Math.min(360, startW + ev.clientX - startX))
+      setSidebarWidth(w); sidebarWidthRef.current = w
+    }
+    const onUp = () => {
+      localStorage.setItem('keryx_sidebar_w', String(sidebarWidthRef.current))
+      window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
+  }, [])
+
+  const startReferenceResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX; const startW = referenceWidthRef.current
+    const onMove = (ev: MouseEvent) => {
+      const w = Math.max(180, Math.min(520, startW + ev.clientX - startX))
+      setReferenceWidth(w); referenceWidthRef.current = w
+    }
+    const onUp = () => {
+      localStorage.setItem('keryx_ref_w', String(referenceWidthRef.current))
+      window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
+  }, [])
+
+  const startAiResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX; const startW = aiWidthRef.current
+    const onMove = (ev: MouseEvent) => {
+      const w = Math.max(240, Math.min(560, startW - (ev.clientX - startX)))
+      setAiWidth(w); aiWidthRef.current = w
+    }
+    const onUp = () => {
+      localStorage.setItem('keryx_ai_w', String(aiWidthRef.current))
+      window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
+  }, [])
 
   const activeDef = getSectionBySlug(activeSlug)
   const activeTool = getToolAreaBySlug(activeSlug)
@@ -339,9 +425,24 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
         </div>
 
         <button
+          onClick={() => setFocusMode(o => !o)}
+          style={{
+            marginLeft: '0.5rem', flexShrink: 0,
+            background: focusMode ? 'rgba(255,255,255,0.06)' : 'transparent',
+            border: `1px solid ${focusMode ? 'var(--border)' : 'var(--border-subtle)'}`,
+            color: focusMode ? 'var(--text-secondary)' : 'var(--text-muted)',
+            borderRadius: '5px', padding: '0.2rem 0.55rem',
+            fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.04em',
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+          }}
+        >
+          {focusMode ? 'Sair' : 'Foco'}
+        </button>
+
+        <button
           onClick={() => setAiOpen(o => !o)}
           style={{
-            marginLeft: '0.75rem', flexShrink: 0,
+            marginLeft: '0.5rem', flexShrink: 0,
             background: aiOpen ? 'var(--ai-subtle)' : 'transparent',
             border: `1px solid ${aiOpen ? 'var(--ai)' : 'var(--border-subtle)'}`,
             color: aiOpen ? 'var(--ai)' : 'var(--text-muted)',
@@ -361,13 +462,42 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
 
         {/* ── Sidebar ───────────────────────────────────────────────────── */}
         <nav style={{
-          width: '176px', flexShrink: 0,
+          width: focusMode ? '0' : sidebarCollapsed ? '40px' : `${sidebarWidth}px`,
+          flexShrink: 0,
           borderRight: '1px solid var(--border-subtle)',
           background: 'var(--surface)',
-          overflowY: 'auto',
+          overflowY: sidebarCollapsed ? 'hidden' : 'auto',
           display: 'flex', flexDirection: 'column',
           paddingBottom: '2.5rem',
+          transition: 'width 0.18s ease',
         }}>
+          {sidebarCollapsed ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', paddingTop: '0.4rem' }}>
+              <button
+                onClick={() => { setSidebarCollapsed(false); localStorage.setItem('keryx_sidebar_c', '0') }}
+                title="Expandir menu"
+                style={{ width: '28px', height: '24px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9rem', borderRadius: '3px' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+              >›</button>
+              {NAV_PHASES.map(ph => (
+                <button key={ph.id} title={ph.label}
+                  onClick={() => { setSidebarCollapsed(false); localStorage.setItem('keryx_sidebar_c', '0'); setExpandedPhases(prev => new Set([...prev, ph.id])) }}
+                  style={{ width: '28px', height: '22px', background: 'transparent', border: 'none', cursor: 'pointer', color: ph.color, fontSize: '0.6rem', fontWeight: 800, borderRadius: '3px' }}
+                >{ph.roman}</button>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.35rem 0.4rem 0', flexShrink: 0 }}>
+                <button
+                  onClick={() => { setSidebarCollapsed(true); localStorage.setItem('keryx_sidebar_c', '1') }}
+                  title="Recolher menu"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '0.1rem 0.3rem', borderRadius: '3px' }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                >‹</button>
+              </div>
           {NAV_PHASES.map((phase, phaseIdx) => {
             const phaseOpen = expandedPhases.has(phase.id)
 
@@ -582,15 +712,54 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
               </div>
             )
           })}
+            </>
+          )}
         </nav>
+        {!focusMode && !sidebarCollapsed && <ResizeHandle onMouseDown={startSidebarResize} />}
 
         {/* ── Content + AI panel ───────────────────────────────────────── */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', overflow: 'hidden' }}>
-          {activeSlug === 'sermao_dispositio' && (
-            <LiveReferencePanel
-              savedSections={sections}
-              onAskAI={prompt => { setAiPrompt(prompt); setAiOpen(true) }}
-            />
+          {activeSlug === 'sermao_dispositio' && !focusMode && (
+            <>
+              {referenceCollapsed ? (
+                <div
+                  onClick={() => setReferenceCollapsed(false)}
+                  title="Referência Viva — expandir"
+                  style={{
+                    width: '28px', flexShrink: 0, cursor: 'pointer',
+                    borderRight: '1px solid var(--border-subtle)',
+                    background: 'var(--surface)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <span style={{
+                    writingMode: 'vertical-rl', transform: 'rotate(180deg)',
+                    fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.09em',
+                    textTransform: 'uppercase', color: 'var(--text-muted)',
+                  }}>Referência</span>
+                </div>
+              ) : (
+                <>
+                  <div style={{ width: `${referenceWidth}px`, flexShrink: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.3rem 0.4rem', flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
+                      <button
+                        onClick={() => setReferenceCollapsed(true)}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.7rem', padding: '0.1rem 0.3rem', borderRadius: '3px' }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                      >Recolher ‹</button>
+                    </div>
+                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                      <LiveReferencePanel
+                        savedSections={sections}
+                        onAskAI={prompt => { setAiPrompt(prompt); setAiOpen(true) }}
+                      />
+                    </div>
+                  </div>
+                  <ResizeHandle onMouseDown={startReferenceResize} />
+                </>
+              )}
+            </>
           )}
 
           {/* Reading area */}
@@ -651,16 +820,16 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
           </main>
 
           {/* AI panel — flex sibling so content is never obscured */}
+          {aiOpen && <ResizeHandle onMouseDown={startAiResize} />}
           <aside style={{
             flexShrink: 0,
-            width: aiOpen ? '308px' : '0',
+            width: aiOpen ? `${aiWidth}px` : '0',
             overflow: 'hidden',
-            borderLeft: aiOpen ? '1px solid var(--border-subtle)' : 'none',
+            borderLeft: 'none',
             background: 'var(--surface)',
             display: 'flex', flexDirection: 'column',
-            transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
           }}>
-            <div style={{ width: '308px', flexShrink: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ width: `${aiWidth}px`, flexShrink: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
               <AIPanel
                 project={project}
                 activeSlug={activeSlug}

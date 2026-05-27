@@ -152,7 +152,7 @@ export default function ToolsWorkspace({ project, activeSlug, onNavigate, onAskA
           </section>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(280px, 0.75fr)', gap: '1rem', alignItems: 'start' }}>
-            <section style={{ display: 'grid', gap: '1rem' }}>
+            <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{
                 border: '1px solid var(--border-subtle)',
                 background: 'var(--surface)',
@@ -255,7 +255,7 @@ export default function ToolsWorkspace({ project, activeSlug, onNavigate, onAskA
               </div>
             </section>
 
-            <aside style={{ display: 'grid', gap: '1rem' }}>
+            <aside style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignSelf: 'start' }}>
               <div style={{
                 border: '1px solid var(--border-subtle)',
                 background: 'var(--surface)',

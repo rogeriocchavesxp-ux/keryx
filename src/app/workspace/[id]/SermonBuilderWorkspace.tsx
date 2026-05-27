@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Project, Section } from '@/types/database'
 
@@ -11,14 +11,18 @@ type BlockType = 'introducao' | 'desenvolvimento' | 'transicao' | 'aplicacao' | 
 interface Subponto {
   id: string
   text: string
+  notes?: string
 }
 
 interface PontoPrincipal {
   id: string
   text: string
+  notes?: string
   subpontos: Subponto[]
   ilustracao: string
+  ilustracaoNotes?: string
   aplicacao: string
+  aplicacaoNotes?: string
 }
 
 interface SermonBlock {
@@ -57,7 +61,7 @@ function toRoman(n: number): string {
 }
 
 function defaultPontos(): PontoPrincipal[] {
-  return [{ id: mkId(), text: '', subpontos: [{ id: mkId(), text: '' }], ilustracao: '', aplicacao: '' }]
+  return [{ id: mkId(), text: '', notes: '', subpontos: [{ id: mkId(), text: '', notes: '' }], ilustracao: '', ilustracaoNotes: '', aplicacao: '', aplicacaoNotes: '' }]
 }
 
 function normalizePontos(raw: unknown): PontoPrincipal[] {
@@ -148,12 +152,86 @@ function SmallBtn({ onClick, children, color = 'var(--text-muted)', disabled = f
         flexShrink: 0,
         lineHeight: 1.2,
         whiteSpace: 'nowrap',
-        transition: 'opacity 0.1s',
         opacity: disabled ? 0.3 : 1,
       }}
     >
       {children}
     </button>
+  )
+}
+
+// ── NoteBtn ────────────────────────────────────────────────────────────────
+
+function NoteBtn({ hasContent, isOpen, onClick, color = 'var(--ai)' }: {
+  hasContent: boolean; isOpen: boolean; onClick: () => void; color?: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={hasContent ? 'Nota de apoio (preenchida)' : 'Adicionar nota de apoio'}
+      style={{
+        position: 'relative',
+        background: isOpen ? `${color}18` : 'transparent',
+        border: `1px solid ${isOpen ? color : hasContent ? `${color}70` : 'var(--border-subtle)'}`,
+        borderRadius: '3px',
+        color: isOpen ? color : hasContent ? `${color}90` : 'var(--text-muted)',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        fontSize: '0.64rem',
+        fontWeight: 700,
+        padding: '0.12rem 0.3rem',
+        flexShrink: 0,
+        lineHeight: 1,
+        transition: 'border-color 0.12s, color 0.12s, background 0.12s',
+      }}
+    >
+      ✎
+      {hasContent && !isOpen && (
+        <span style={{
+          position: 'absolute', top: '-2px', right: '-2px',
+          width: '4px', height: '4px', borderRadius: '50%',
+          background: color, display: 'block',
+        }} />
+      )}
+    </button>
+  )
+}
+
+// ── NoteArea ───────────────────────────────────────────────────────────────
+
+function NoteArea({ value, onChange, onAskAI, aiPrompt, color = 'var(--ai)' }: {
+  value: string; onChange: (v: string) => void
+  onAskAI: (p: string) => void; aiPrompt: string; color?: string
+}) {
+  return (
+    <div style={{
+      background: `${color}08`,
+      border: `1px solid ${color}22`,
+      borderRadius: '5px',
+      padding: '0.48rem 0.58rem 0.42rem',
+      marginTop: '0.22rem',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+        <span style={{
+          fontSize: '0.54rem', fontWeight: 900, letterSpacing: '0.1em',
+          textTransform: 'uppercase', color, opacity: 0.65,
+        }}>Nota de apoio</span>
+        <SmallBtn onClick={() => onAskAI(aiPrompt)} color={color} compact>IA</SmallBtn>
+      </div>
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="Explicação, argumento, citação, referência bíblica, observação pastoral, lembrete de pregação…"
+        autoFocus
+        rows={3}
+        style={{
+          width: '100%', background: 'transparent', border: 'none',
+          color: 'var(--text-primary)', fontFamily: 'inherit',
+          fontSize: '0.82rem', lineHeight: 1.7,
+          resize: 'vertical', outline: 'none', padding: 0,
+        }}
+      />
+    </div>
   )
 }
 
@@ -168,15 +246,19 @@ interface DevEditorProps {
 
 function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditorProps) {
   const ref = `${project.book} ${project.passage_ref}`
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set([pontos[0]?.id].filter(Boolean)))
+  const [expanded,  setExpanded]  = useState<Set<string>>(() => new Set([pontos[0]?.id].filter(Boolean)))
+  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set())
 
-  const toggle = (id: string) =>
+  const toggleExpand = (id: string) =>
     setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
-  // ── Pontos
+  const toggleNote = (key: string) =>
+    setOpenNotes(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
+
+  // ── Pontos CRUD
 
   function addPonto() {
-    const p: PontoPrincipal = { id: mkId(), text: '', subpontos: [{ id: mkId(), text: '' }], ilustracao: '', aplicacao: '' }
+    const p: PontoPrincipal = { id: mkId(), text: '', notes: '', subpontos: [{ id: mkId(), text: '', notes: '' }], ilustracao: '', ilustracaoNotes: '', aplicacao: '', aplicacaoNotes: '' }
     setExpanded(prev => new Set([...prev, p.id]))
     onUpdate([...pontos, p])
   }
@@ -195,30 +277,28 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
     onUpdate(arr)
   }
 
-  function deletePonto(id: string) {
-    onUpdate(pontos.filter(p => p.id !== id))
-  }
+  function deletePonto(id: string) { onUpdate(pontos.filter(p => p.id !== id)) }
 
   function demotePonto(id: string) {
     const i = pontos.findIndex(p => p.id === id)
     if (i <= 0) return
     const target = pontos[i]
     const arr = pontos.filter(p => p.id !== id)
-    arr[i - 1] = { ...arr[i - 1], subpontos: [...arr[i - 1].subpontos, { id: mkId(), text: target.text }] }
+    arr[i - 1] = { ...arr[i - 1], subpontos: [...arr[i - 1].subpontos, { id: mkId(), text: target.text, notes: '' }] }
     onUpdate(arr)
   }
 
-  // ── Subpontos
+  // ── Subpontos CRUD
 
   function addSubponto(pontoId: string) {
     const p = pontos.find(p => p.id === pontoId)!
     if (p.subpontos.length >= 7) return
-    patch(pontoId, { subpontos: [...p.subpontos, { id: mkId(), text: '' }] })
+    patch(pontoId, { subpontos: [...p.subpontos, { id: mkId(), text: '', notes: '' }] })
   }
 
-  function updateSub(pontoId: string, subId: string, text: string) {
+  function patchSub(pontoId: string, subId: string, data: Partial<Subponto>) {
     const p = pontos.find(p => p.id === pontoId)!
-    patch(pontoId, { subpontos: p.subpontos.map(s => s.id === subId ? { ...s, text } : s) })
+    patch(pontoId, { subpontos: p.subpontos.map(s => s.id === subId ? { ...s, ...data } : s) })
   }
 
   function moveSub(pontoId: string, subId: string, dir: 'up' | 'down') {
@@ -241,18 +321,23 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
     const i = pontos.findIndex(p => p.id === pontoId)
     const p = pontos[i]
     const sub = p.subpontos.find(s => s.id === subId)!
-    const newPonto: PontoPrincipal = { id: mkId(), text: sub.text, subpontos: [], ilustracao: '', aplicacao: '' }
+    const newPonto: PontoPrincipal = { id: mkId(), text: sub.text, notes: sub.notes ?? '', subpontos: [], ilustracao: '', ilustracaoNotes: '', aplicacao: '', aplicacaoNotes: '' }
     const arr = pontos.map(pt => pt.id === pontoId ? { ...pt, subpontos: pt.subpontos.filter(s => s.id !== subId) } : pt)
     arr.splice(i + 1, 0, newPonto)
     setExpanded(prev => new Set([...prev, newPonto.id]))
     onUpdate(arr)
   }
 
-  // ── AI
+  // ── AI prompts
 
   function aiPonto(p: PontoPrincipal) {
     const ctx = p.text.trim() ? `"${p.text}"` : 'este ponto'
     onAskAI(`Avalie e melhore o ponto principal ${ctx} do sermão de ${ref}. O ponto deve ser claro, arguir a partir do texto e ter progressão lógica. Sugira também subpontos e estrutura de desenvolvimento.`)
+  }
+
+  function aiNotaPonto(p: PontoPrincipal) {
+    const ctx = p.text.trim() ? `"${p.text}"` : 'este ponto'
+    onAskAI(`Escreva notas de apoio para o ponto principal ${ctx} do sermão de ${ref}. Inclua: argumento teológico, evidência textual, observação exegética e lembrete pastoral para a pregação.`)
   }
 
   function aiSubpontos(p: PontoPrincipal) {
@@ -264,12 +349,25 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
     onAskAI(`Desenvolva o subponto ${ctx} dentro do ponto "${p.text || 'principal'}" do sermão de ${ref}. Argumento textual, explicação e evidência bíblica em linguagem pastoral.`)
   }
 
+  function aiNotaSub(p: PontoPrincipal, s: Subponto) {
+    const ctx = s.text.trim() ? `"${s.text}"` : 'este subponto'
+    onAskAI(`Escreva notas de apoio para o subponto ${ctx} dentro do ponto "${p.text || 'principal'}" do sermão de ${ref}. Inclua: explicação, argumento, citação relevante e como desenvolver oralmente.`)
+  }
+
   function aiIlustracao(p: PontoPrincipal) {
     onAskAI(`Sugira uma ilustração, analogia ou exemplo histórico para o ponto "${p.text || 'principal'}" do sermão de ${ref}. Breve, pastoral e conectada ao texto — ilumina sem dominar.`)
   }
 
+  function aiNotaIlustracao(p: PontoPrincipal) {
+    onAskAI(`Escreva notas de apoio para a ilustração do ponto "${p.text || 'principal'}" do sermão de ${ref}. Como apresentá-la oralmente com ritmo natural? Inclua transição de entrada e saída.`)
+  }
+
   function aiAplicacao(p: PontoPrincipal) {
     onAskAI(`Desenvolva aplicações pastorais para o ponto "${p.text || 'principal'}" do sermão de ${ref}. Responda: Como confronta? Como consola? Como chama à fé? Como revela Cristo? Como transforma o ouvinte?`)
+  }
+
+  function aiNotaAplicacao(p: PontoPrincipal) {
+    onAskAI(`Escreva notas de apoio para a aplicação do ponto "${p.text || 'principal'}" do sermão de ${ref}. Sugira como torná-la concreta, evangélica, específica para a congregação e pastoralmente poderosa.`)
   }
 
   function aiRevisao() {
@@ -293,6 +391,9 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
         const isLast   = pi === pontos.length - 1
         const hasText  = ponto.text.trim().length > 0
         const subCount = ponto.subpontos.length
+        const pontoNoteKey = `${ponto.id}:ponto`
+        const iluNoteKey   = `${ponto.id}:ilu`
+        const aplNoteKey   = `${ponto.id}:apl`
 
         return (
           <div
@@ -313,13 +414,11 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
               borderBottom: isOpen ? '1px solid var(--border-subtle)' : 'none',
             }}>
               <button
-                onClick={() => toggle(ponto.id)}
+                onClick={() => toggleExpand(ponto.id)}
                 style={{
                   background: 'none', border: 'none', color: 'var(--text-muted)',
                   cursor: 'pointer', fontSize: '0.6rem', padding: 0, flexShrink: 0,
-                  transition: 'transform 0.15s',
-                  transform: isOpen ? 'rotate(90deg)' : 'none',
-                  lineHeight: 1,
+                  transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'none', lineHeight: 1,
                 }}
               >▶</button>
 
@@ -340,7 +439,7 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
                 />
               ) : (
                 <span
-                  onClick={() => toggle(ponto.id)}
+                  onClick={() => toggleExpand(ponto.id)}
                   style={{
                     flex: 1, fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer',
                     color: hasText ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -358,11 +457,30 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
                 </span>
               )}
 
+              <NoteBtn
+                hasContent={!!(ponto.notes?.trim())}
+                isOpen={openNotes.has(pontoNoteKey)}
+                onClick={() => toggleNote(pontoNoteKey)}
+                color={AI_COLOR}
+              />
               <SmallBtn onClick={() => aiPonto(ponto)} color={AI_COLOR} compact title="Sugerir / avaliar ponto">IA</SmallBtn>
               <SmallBtn onClick={() => movePonto(ponto.id, 'up')}   disabled={isFirst} color="var(--text-muted)" compact>↑</SmallBtn>
               <SmallBtn onClick={() => movePonto(ponto.id, 'down')} disabled={isLast}  color="var(--text-muted)" compact>↓</SmallBtn>
               <SmallBtn onClick={() => deletePonto(ponto.id)} color="var(--error)" compact title="Excluir ponto">✕</SmallBtn>
             </div>
+
+            {/* Nota do ponto principal */}
+            {openNotes.has(pontoNoteKey) && (
+              <div style={{ padding: '0 0.6rem 0.5rem' }}>
+                <NoteArea
+                  value={ponto.notes ?? ''}
+                  onChange={v => patch(ponto.id, { notes: v })}
+                  onAskAI={onAskAI}
+                  aiPrompt={`Escreva notas de apoio para o ponto "${ponto.text || 'principal'}" do sermão de ${ref}. Argumento teológico, evidência textual, observação exegética e lembrete pastoral.`}
+                  color={AI_COLOR}
+                />
+              </div>
+            )}
 
             {/* ── Ponto body ───────────────────────────────────────── */}
             {isOpen && (
@@ -380,33 +498,56 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
-                    {ponto.subpontos.map((sub, si) => (
-                      <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '0.28rem' }}>
-                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', flexShrink: 0, width: '16px', textAlign: 'right', lineHeight: 1 }}>
-                          {si + 1}.
-                        </span>
-                        <input
-                          value={sub.text}
-                          onChange={e => updateSub(ponto.id, sub.id, e.target.value)}
-                          placeholder={`Subponto ${si + 1}…`}
-                          style={{
-                            flex: 1, background: 'var(--surface-3)',
-                            border: '1px solid var(--border-subtle)',
-                            borderRadius: '4px', color: 'var(--text-primary)',
-                            fontFamily: 'inherit', fontSize: '0.84rem',
-                            padding: '0.27rem 0.48rem', outline: 'none',
-                          }}
-                          onFocus={e => e.currentTarget.style.borderColor = AI_COLOR}
-                          onBlur={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
-                        />
-                        <SmallBtn onClick={() => moveSub(ponto.id, sub.id, 'up')}   disabled={si === 0}                         color="var(--text-muted)" compact>↑</SmallBtn>
-                        <SmallBtn onClick={() => moveSub(ponto.id, sub.id, 'down')} disabled={si === ponto.subpontos.length - 1} color="var(--text-muted)" compact>↓</SmallBtn>
-                        <SmallBtn onClick={() => aiSubponto(ponto, sub)}                  color={AI_COLOR}      compact title="Desenvolver subponto">IA</SmallBtn>
-                        <SmallBtn onClick={() => promoteSub(ponto.id, sub.id)}            color="var(--accent)" compact title="Promover a Ponto Principal">↗</SmallBtn>
-                        <SmallBtn onClick={() => removeSub(ponto.id, sub.id)}             color="var(--error)"  compact title="Remover subponto">✕</SmallBtn>
-                      </div>
-                    ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
+                    {ponto.subpontos.map((sub, si) => {
+                      const subNoteKey = `${ponto.id}:sub:${sub.id}`
+                      const subNoteOpen = openNotes.has(subNoteKey)
+                      const subHasNote = !!(sub.notes?.trim())
+
+                      return (
+                        <div key={sub.id}>
+                          {/* Subponto row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.28rem' }}>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', flexShrink: 0, width: '16px', textAlign: 'right', lineHeight: 1 }}>
+                              {si + 1}.
+                            </span>
+                            <input
+                              value={sub.text}
+                              onChange={e => patchSub(ponto.id, sub.id, { text: e.target.value })}
+                              placeholder={`Subponto ${si + 1}…`}
+                              style={{
+                                flex: 1, background: 'var(--surface-3)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: '4px', color: 'var(--text-primary)',
+                                fontFamily: 'inherit', fontSize: '0.84rem',
+                                padding: '0.27rem 0.48rem', outline: 'none',
+                              }}
+                              onFocus={e => e.currentTarget.style.borderColor = AI_COLOR}
+                              onBlur={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+                            />
+                            <NoteBtn hasContent={subHasNote} isOpen={subNoteOpen} onClick={() => toggleNote(subNoteKey)} color={AI_COLOR} />
+                            <SmallBtn onClick={() => moveSub(ponto.id, sub.id, 'up')}   disabled={si === 0}                         color="var(--text-muted)" compact>↑</SmallBtn>
+                            <SmallBtn onClick={() => moveSub(ponto.id, sub.id, 'down')} disabled={si === ponto.subpontos.length - 1} color="var(--text-muted)" compact>↓</SmallBtn>
+                            <SmallBtn onClick={() => aiSubponto(ponto, sub)} color={AI_COLOR} compact title="Desenvolver subponto">IA</SmallBtn>
+                            <SmallBtn onClick={() => promoteSub(ponto.id, sub.id)} color="var(--accent)" compact title="Promover a Ponto Principal">↗</SmallBtn>
+                            <SmallBtn onClick={() => removeSub(ponto.id, sub.id)} color="var(--error)" compact title="Remover subponto">✕</SmallBtn>
+                          </div>
+
+                          {/* Nota do subponto */}
+                          {subNoteOpen && (
+                            <div style={{ marginLeft: '22px' }}>
+                              <NoteArea
+                                value={sub.notes ?? ''}
+                                onChange={v => patchSub(ponto.id, sub.id, { notes: v })}
+                                onAskAI={onAskAI}
+                                aiPrompt={`Escreva notas de apoio para o subponto "${sub.text || 'este subponto'}" dentro do ponto "${ponto.text || 'principal'}" do sermão de ${ref}. Explicação, argumento, citação e como desenvolver oralmente.`}
+                                color={AI_COLOR}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
 
                     {ponto.subpontos.length === 0 && (
                       <button
@@ -430,7 +571,15 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
                     <span style={secLabel}>Ilustração</span>
-                    <SmallBtn onClick={() => aiIlustracao(ponto)} color={AI_COLOR} compact>IA</SmallBtn>
+                    <div style={{ display: 'flex', gap: '0.3rem' }}>
+                      <NoteBtn
+                        hasContent={!!(ponto.ilustracaoNotes?.trim())}
+                        isOpen={openNotes.has(iluNoteKey)}
+                        onClick={() => toggleNote(iluNoteKey)}
+                        color={AI_COLOR}
+                      />
+                      <SmallBtn onClick={() => aiIlustracao(ponto)} color={AI_COLOR} compact>IA</SmallBtn>
+                    </div>
                   </div>
                   <textarea
                     value={ponto.ilustracao}
@@ -447,13 +596,30 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
                     onFocus={e => e.currentTarget.style.borderColor = AI_COLOR}
                     onBlur={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
                   />
+                  {openNotes.has(iluNoteKey) && (
+                    <NoteArea
+                      value={ponto.ilustracaoNotes ?? ''}
+                      onChange={v => patch(ponto.id, { ilustracaoNotes: v })}
+                      onAskAI={onAskAI}
+                      aiPrompt={`Escreva notas de apoio para a ilustração do ponto "${ponto.text || 'principal'}" do sermão de ${ref}. Como apresentá-la oralmente? Transição de entrada, desenvolvimento e saída natural.`}
+                      color={AI_COLOR}
+                    />
+                  )}
                 </div>
 
                 {/* Aplicação */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
                     <span style={secLabel}>Aplicação</span>
-                    <SmallBtn onClick={() => aiAplicacao(ponto)} color="#6db8a0" compact>IA</SmallBtn>
+                    <div style={{ display: 'flex', gap: '0.3rem' }}>
+                      <NoteBtn
+                        hasContent={!!(ponto.aplicacaoNotes?.trim())}
+                        isOpen={openNotes.has(aplNoteKey)}
+                        onClick={() => toggleNote(aplNoteKey)}
+                        color="#6db8a0"
+                      />
+                      <SmallBtn onClick={() => aiAplicacao(ponto)} color="#6db8a0" compact>IA</SmallBtn>
+                    </div>
                   </div>
                   <textarea
                     value={ponto.aplicacao}
@@ -470,6 +636,15 @@ function DesenvolvimentoEditor({ pontos, project, onUpdate, onAskAI }: DevEditor
                     onFocus={e => e.currentTarget.style.borderColor = '#6db8a0'}
                     onBlur={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
                   />
+                  {openNotes.has(aplNoteKey) && (
+                    <NoteArea
+                      value={ponto.aplicacaoNotes ?? ''}
+                      onChange={v => patch(ponto.id, { aplicacaoNotes: v })}
+                      onAskAI={onAskAI}
+                      aiPrompt={`Escreva notas de apoio para a aplicação do ponto "${ponto.text || 'principal'}" do sermão de ${ref}. Como torná-la concreta, evangélica, transformadora e específica para a congregação?`}
+                      color="#6db8a0"
+                    />
+                  )}
                 </div>
 
                 {/* Demote */}
@@ -558,12 +733,6 @@ export default function SermonBuilderWorkspace({
   const sectionIdRef   = useRef(existingSection?.id)
   sectionIdRef.current = existingSection?.id
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    const h = () => { setActiveMenu(null); setAddOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
 
   const performSave = useCallback(async (current: SermonBlock[]) => {
     setSaving(true)
@@ -663,7 +832,7 @@ export default function SermonBuilderWorkspace({
           Construtor Homilético
         </h1>
         <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.65, maxWidth: '600px' }}>
-          Organize o sermão em blocos modulares. O bloco Desenvolvimento é estruturado em Pontos Principais, Subpontos, Ilustração e Aplicação.
+          Organize o sermão em blocos modulares. Use o ícone <strong style={{ color: 'var(--ai)', fontWeight: 700 }}>✎</strong> em qualquer ponto ou subponto para adicionar notas de apoio.
         </p>
         <div style={{ marginTop: '0.65rem', fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
           {project.book} {project.passage_ref} · {savedLabel}
@@ -673,9 +842,9 @@ export default function SermonBuilderWorkspace({
       {/* Blocks */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {blocks.map((block, idx) => {
-          const color   = TYPE_COLOR[block.type]
-          const isFirst = idx === 0
-          const isLast  = idx === blocks.length - 1
+          const color    = TYPE_COLOR[block.type]
+          const isFirst  = idx === 0
+          const isLast   = idx === blocks.length - 1
           const menuOpen = activeMenu === block.id
           const isDev    = block.type === 'desenvolvimento'
 
@@ -697,15 +866,11 @@ export default function SermonBuilderWorkspace({
                 padding: '0.6rem 0.75rem',
                 borderBottom: '1px solid var(--border-subtle)',
               }}>
-                <span style={{
-                  width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
-                  background: dotColor(block),
-                }} />
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: dotColor(block) }} />
 
                 {renamingId === block.id ? (
                   <input
-                    autoFocus
-                    value={renameVal}
+                    autoFocus value={renameVal}
                     onChange={e => setRenameVal(e.target.value)}
                     onBlur={() => commitRename(block.id)}
                     onKeyDown={e => { if (e.key === 'Enter') commitRename(block.id); if (e.key === 'Escape') setRenamingId(null) }}
@@ -724,10 +889,7 @@ export default function SermonBuilderWorkspace({
                   </span>
                 )}
 
-                <span style={{
-                  fontSize: '0.6rem', color, textTransform: 'uppercase',
-                  letterSpacing: '0.08em', fontWeight: 700, opacity: 0.7, flexShrink: 0,
-                }}>
+                <span style={{ fontSize: '0.6rem', color, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, opacity: 0.7, flexShrink: 0 }}>
                   {BLOCK_TYPES.find(t => t.type === block.type)?.label}
                 </span>
 
@@ -751,9 +913,7 @@ export default function SermonBuilderWorkspace({
                     color, cursor: 'pointer', fontFamily: 'inherit',
                     fontSize: '0.72rem', fontWeight: 700, padding: '0.18rem 0.6rem', flexShrink: 0,
                   }}
-                >
-                  Gerar
-                </button>
+                >Gerar</button>
 
                 <button
                   onMouseDown={e => { e.stopPropagation(); setActiveMenu(menuOpen ? null : block.id); setAddOpen(false) }}

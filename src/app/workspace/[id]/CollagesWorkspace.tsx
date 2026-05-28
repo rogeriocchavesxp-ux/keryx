@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Project, Section } from '@/types/database'
 import {
@@ -57,7 +57,15 @@ export default function CollagesWorkspace({ project, userId, existingSection, on
   const [filter, setFilter] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [readingItem, setReadingItem] = useState<CollageItem | null>(null)
   const dragRef = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null)
+
+  useEffect(() => {
+    if (!readingItem) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setReadingItem(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [readingItem])
 
   async function save(nextItems: CollageItem[]) {
     setSaving(true)
@@ -274,7 +282,7 @@ export default function CollagesWorkspace({ project, userId, existingSection, on
                 }}
                 style={{ position: 'absolute', left: item.x, top: item.y, width: '230px', cursor: 'grab', border: `1px solid ${colorFor(item.type)}`, background: 'var(--surface)', borderRadius: '8px', padding: '0.85rem', boxShadow: '0 16px 40px rgba(0,0,0,0.18)' }}
               >
-                <CollageCard item={item} onRemove={removeItem} onAskAI={askAI} compact />
+                <CollageCard item={item} onRemove={removeItem} onAskAI={askAI} onOpenRead={setReadingItem} compact />
               </article>
             ))}
           </div>
@@ -282,7 +290,7 @@ export default function CollagesWorkspace({ project, userId, existingSection, on
           <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'lista' ? '1fr' : 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.75rem' }}>
             {filteredItems.map(item => (
               <article key={item.id} style={{ border: `1px solid ${viewMode === 'cards' ? colorFor(item.type) : 'var(--border-subtle)'}`, background: 'var(--surface)', borderRadius: '8px', padding: '0.9rem' }}>
-                <CollageCard item={item} onRemove={removeItem} onAskAI={askAI} />
+                <CollageCard item={item} onRemove={removeItem} onAskAI={askAI} onOpenRead={setReadingItem} />
               </article>
             ))}
           </div>
@@ -296,31 +304,147 @@ export default function CollagesWorkspace({ project, userId, existingSection, on
           ))}
         </section>
       </div>
+
+      {readingItem && (
+        <div
+          onClick={() => setReadingItem(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(10,13,20,0.82)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '2rem',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)',
+              border: `1px solid ${colorFor(readingItem.type)}`,
+              borderRadius: '10px',
+              padding: '2rem 2.2rem 2rem',
+              maxWidth: '680px',
+              width: '100%',
+              maxHeight: '82vh',
+              overflowY: 'auto',
+              position: 'relative',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '1.1rem' }}>
+              <span style={{ fontSize: '0.62rem', color: colorFor(readingItem.type), textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 900, paddingTop: '0.2rem' }}>
+                {itemTypeLabel(readingItem.type)}
+              </span>
+              <button
+                onClick={() => setReadingItem(null)}
+                style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0 0.2rem' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+              >×</button>
+            </div>
+
+            <h2 style={{ margin: '0 0 1.1rem', fontSize: '1.35rem', color: 'var(--text-primary)', lineHeight: 1.25, letterSpacing: 0 }}>
+              {readingItem.title}
+            </h2>
+
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontFamily: 'var(--font-serif)', fontSize: '1.05rem', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+              {readingItem.content}
+            </p>
+
+            {(readingItem.author || readingItem.work || readingItem.page) && (
+              <div style={{ marginTop: '1.4rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1.6 }}>
+                {readingItem.author && <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{readingItem.author}</span>}
+                {readingItem.work && <span> · {readingItem.work}</span>}
+                {readingItem.page && <span> · p. {readingItem.page}</span>}
+              </div>
+            )}
+
+            {(readingItem.category || readingItem.tags.length > 0 || readingItem.linkedTo) && (
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.85rem' }}>
+                {readingItem.category && (
+                  <span style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: '5px', color: 'var(--text-muted)', fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}>
+                    {readingItem.category}
+                  </span>
+                )}
+                {readingItem.linkedTo && readingItem.linkedTo !== projectRef && (
+                  <span style={{ background: 'var(--surface-2)', border: `1px solid ${colorFor(readingItem.type)}`, borderRadius: '5px', color: colorFor(readingItem.type), fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}>
+                    {readingItem.linkedTo}
+                  </span>
+                )}
+                {readingItem.tags.map(tag => (
+                  <span key={tag} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: '5px', color: 'var(--text-muted)', fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}>
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.55rem', marginTop: '1.2rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => { askAI('Relacione esta colagem com a passagem atual, indicando conexões exegéticas, teológicas e homiléticas.', readingItem); setReadingItem(null) }}
+                style={{ background: 'transparent', border: `1px solid ${colorFor(readingItem.type)}`, color: colorFor(readingItem.type), borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.76rem', fontWeight: 800, padding: '0.38rem 0.65rem' }}
+              >
+                Relacionar com IA
+              </button>
+              <button
+                onClick={() => { askAI('Sugira tags, categoria, vínculos e possíveis agrupamentos para esta colagem.', readingItem); setReadingItem(null) }}
+                style={{ background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.76rem', padding: '0.38rem 0.65rem' }}
+              >
+                Organizar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function CollageCard({ item, onRemove, onAskAI, compact = false }: {
+function CollageCard({ item, onRemove, onAskAI, onOpenRead, compact = false }: {
   item: CollageItem
   onRemove: (id: string) => void
   onAskAI: (prompt: string, item?: CollageItem) => void
+  onOpenRead: (item: CollageItem) => void
   compact?: boolean
 }) {
   const color = colorFor(item.type)
+  const [hoverText, setHoverText] = useState(false)
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.55rem' }}>
         <span style={{ fontSize: '0.62rem', color, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 900, flexShrink: 0 }}>
           {itemTypeLabel(item.type)}
         </span>
-        <button onClick={() => onRemove(item.id)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--border)', cursor: 'pointer', fontSize: '0.95rem', lineHeight: 1 }}>
+        <button
+          onClick={() => onOpenRead(item)}
+          title="Modo leitura"
+          style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--border)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, padding: '0 0.25rem' }}
+          onMouseEnter={e => e.currentTarget.style.color = color}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--border)'}
+        >⤢</button>
+        <button onClick={() => onRemove(item.id)} style={{ background: 'transparent', border: 'none', color: 'var(--border)', cursor: 'pointer', fontSize: '0.95rem', lineHeight: 1 }}>
           ×
         </button>
       </div>
       <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: compact ? '0.88rem' : '1rem', lineHeight: 1.35, letterSpacing: 0 }}>
         {item.title}
       </h3>
-      <p style={{ margin: '0.45rem 0 0', color: 'var(--text-secondary)', fontFamily: 'var(--font-serif)', fontSize: compact ? '0.8rem' : '0.9rem', lineHeight: 1.65, display: '-webkit-box', WebkitLineClamp: compact ? 4 : 7, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+      <p
+        onClick={() => onOpenRead(item)}
+        onMouseEnter={() => setHoverText(true)}
+        onMouseLeave={() => setHoverText(false)}
+        style={{
+          margin: '0.45rem 0 0',
+          color: hoverText ? 'var(--text-primary)' : 'var(--text-secondary)',
+          fontFamily: 'var(--font-serif)',
+          fontSize: compact ? '0.8rem' : '0.9rem',
+          lineHeight: 1.65,
+          display: '-webkit-box',
+          WebkitLineClamp: compact ? 4 : 7,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          cursor: 'pointer',
+          transition: 'color 0.12s',
+        }}
+      >
         {item.content}
       </p>
       {(item.author || item.work || item.page) && (

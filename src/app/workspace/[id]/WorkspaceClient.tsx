@@ -30,7 +30,7 @@ interface Props {
 
 // ── Tipos de navegação ─────────────────────────────────────────────────────
 
-type PhaseId = 'preparar' | 'investigar' | 'comunicar' | 'ferramentas' | 'colagens'
+type PhaseId = 'preparar' | 'investigar' | 'comunicar' | 'ferramentas'
 
 interface NavGroup { id: string; label: string }
 interface NavMode { id: string; label: string; subtitle: string; color: string; bgActive: string; groups: NavGroup[] }
@@ -129,21 +129,10 @@ const NAV_PHASES: NavPhase[] = [
         subtitle: 'Biblioteca e assistente',
         color: '#9b9488',
         bgActive: 'rgba(155,148,136,0.08)',
-        groups: TOOL_AREAS.map(area => ({ id: area.slug, label: area.shortTitle })),
-      },
-    ],
-  },
-  {
-    id: 'colagens', roman: 'V', label: 'Colagens',
-    color: '#9b7ec8', bgActive: 'rgba(155,126,200,0.08)',
-    modes: [
-      {
-        id: 'colagens_mural',
-        label: 'Mural',
-        subtitle: 'Citações, notas e insights',
-        color: '#9b7ec8',
-        bgActive: 'rgba(155,126,200,0.08)',
-        groups: [{ id: 'colagens', label: 'Rede de apoio' }],
+        groups: [
+          ...TOOL_AREAS.map(area => ({ id: area.slug, label: area.shortTitle })),
+          { id: 'colagens', label: 'Colagens' },
+        ],
       },
     ],
   },
@@ -152,11 +141,10 @@ const NAV_PHASES: NavPhase[] = [
 const NAV_GROUP_IDS = new Set(NAV_PHASES.flatMap(phase => phase.modes.flatMap(mode => mode.groups.map(group => group.id))))
 
 const PHASE_ICONS: Record<PhaseId, string> = {
-  preparar:     '✦',
-  investigar:   '◎',
-  comunicar:    '▷',
-  ferramentas:  '▤',
-  colagens:     '⊞',
+  preparar:    '✦',
+  investigar:  '◎',
+  comunicar:   '▷',
+  ferramentas: '▤',
 }
 
 const GROUP_SUBTITLES: Record<string, string> = {
@@ -197,7 +185,7 @@ const MODE_ICONS: Record<string, string> = {
 // ── Helpers de navegação ───────────────────────────────────────────────────
 
 function getPhaseFor(slug: string): PhaseId {
-  if (slug === 'colagens') return 'colagens'
+  if (slug === 'colagens') return 'ferramentas'
   if (isToolSlug(slug)) return 'ferramentas'
   if (isSynthesisSlug(slug)) return 'investigar'
   const sec = getSectionBySlug(slug)

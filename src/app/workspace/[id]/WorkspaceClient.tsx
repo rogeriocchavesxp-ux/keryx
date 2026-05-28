@@ -19,6 +19,7 @@ import OriginalTextWorkspace from './OriginalTextWorkspace'
 import ToolsWorkspace from './ToolsWorkspace'
 import CollagesWorkspace from './CollagesWorkspace'
 import SermonBuilderWorkspace from './SermonBuilderWorkspace'
+import CommentaryWorkspace from './CommentaryWorkspace'
 import LiveReferencePanel from './LiveReferencePanel'
 import AIPanel from './AIPanel'
 
@@ -117,6 +118,16 @@ const NAV_PHASES: NavPhase[] = [
           { id: 'devocional_pronuntiatio', label: 'Execução da Pregação' },
         ],
       },
+      {
+        id: 'comentario',
+        label: 'Comentário',
+        subtitle: 'Exegese versículo a versículo',
+        color: '#c4916b',
+        bgActive: 'rgba(196,145,107,0.09)',
+        groups: [
+          { id: 'comentario_expositivo', label: 'Expositivo' },
+        ],
+      },
     ],
   },
   {
@@ -174,18 +185,22 @@ const GROUP_SUBTITLES: Record<string, string> = {
   devocional_pronuntiatio:  'Entrega e performance',
   // Colagens
   colagens: 'Citações, notas e insights',
+  // Comentário
+  comentario_expositivo: 'Análise versículo a versículo',
 }
 
 const MODE_ICONS: Record<string, string> = {
   sermao:         '✦',
   estudo_biblico: '◈',
   devocional:     '◌',
+  comentario:     '≡',
 }
 
 // ── Helpers de navegação ───────────────────────────────────────────────────
 
 function getPhaseFor(slug: string): PhaseId {
   if (slug === 'colagens') return 'ferramentas'
+  if (slug === 'comentario_expositivo') return 'comunicar'
   if (isToolSlug(slug)) return 'ferramentas'
   if (isSynthesisSlug(slug)) return 'investigar'
   const sec = getSectionBySlug(slug)
@@ -202,6 +217,7 @@ function getPhaseFor(slug: string): PhaseId {
 
 function getGroupFor(slug: string): string | undefined {
   if (slug === 'colagens') return 'colagens'
+  if (slug === 'comentario_expositivo') return 'comentario_expositivo'
   if (isToolSlug(slug)) return slug
   if (isSynthesisSlug(slug)) return getSynthesisBySlug(slug)?.groupId
   return getSectionBySlug(slug)?.group
@@ -226,6 +242,7 @@ function statusDot(status: 'empty' | 'draft' | 'reviewed' | undefined): string {
 
 function toolProgress(groupId: string): { done: number; total: number } {
   if (groupId === 'colagens') return { done: 0, total: 1 }
+  if (groupId === 'comentario_expositivo') return { done: 0, total: 1 }
   return isToolSlug(groupId) ? { done: 0, total: 1 } : { done: 0, total: 0 }
 }
 
@@ -379,6 +396,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
 
   function groupProgress(groupId: string) {
     if (groupId === 'colagens') return toolProgress(groupId)
+    if (groupId === 'comentario_expositivo') return toolProgress(groupId)
     if (isToolSlug(groupId)) return toolProgress(groupId)
     const gs = getSectionsByGroup(groupId)
     return {
@@ -633,7 +651,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                                 <div style={{ paddingBottom: '0.15rem' }}>
                                   {mode.groups.map((group, groupIdx) => {
                                     const groupOpen      = expandedGroups.has(group.id)
-                                    const isUtilityGroup = isToolSlug(group.id) || group.id === 'colagens'
+                                    const isUtilityGroup = isToolSlug(group.id) || group.id === 'colagens' || group.id === 'comentario_expositivo'
                                     const secs           = isUtilityGroup ? [] : getSectionsByGroup(group.id)
                                     if (secs.length === 0 && !isUtilityGroup) return null
                                     const isSingleSection = !isUtilityGroup && secs.length === 1 && !SYNTHESIS_DEFS[group.id]
@@ -907,6 +925,15 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
                 onUpdate={handleSectionUpdate}
                 onAskAI={prompt => { setAiPrompt(prompt); setAiOpen(true) }}
               />
+            ) : activeSlug === 'comentario_expositivo' ? (
+              <CommentaryWorkspace
+                key={activeSlug}
+                project={project}
+                userId={user.id}
+                existingSection={activeSection}
+                onUpdate={handleSectionUpdate}
+                onAskAI={prompt => { setAiPrompt(prompt); setAiOpen(true) }}
+              />
             ) : activeDef ? (
               <SectionWorkspace
                 key={activeSlug}
@@ -950,7 +977,7 @@ export default function WorkspaceClient({ user, project, initialSections }: Prop
               <AIPanel
                 project={project}
                 activeSlug={activeSlug}
-                activeTitle={activeSlug === 'colagens' ? 'Colagens' : activeTool?.title ?? activeDef?.title ?? ''}
+                activeTitle={activeSlug === 'colagens' ? 'Colagens' : activeSlug === 'comentario_expositivo' ? 'Comentário Expositivo' : activeTool?.title ?? activeDef?.title ?? ''}
                 context={aiPrompt}
                 onClearContext={() => setAiPrompt('')}
               />

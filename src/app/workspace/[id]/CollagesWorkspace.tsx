@@ -58,6 +58,7 @@ export default function CollagesWorkspace({ project, userId, existingSection, on
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [readingItem, setReadingItem] = useState<CollageItem | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const dragRef = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null)
 
   useEffect(() => {
@@ -66,6 +67,27 @@ export default function CollagesWorkspace({ project, userId, existingSection, on
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [readingItem])
+
+  useEffect(() => {
+    function onFsChange() { setIsFullscreen(!!document.fullscreenElement) }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
+
+  function handlePrint() {
+    const toolbar = document.getElementById('keryx-reading-toolbar')
+    if (toolbar) toolbar.style.display = 'none'
+    window.print()
+    requestAnimationFrame(() => { if (toolbar) toolbar.style.display = '' })
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {})
+    } else {
+      document.exitFullscreen().catch(() => {})
+    }
+  }
 
   async function save(nextItems: CollageItem[]) {
     setSaving(true)
@@ -306,87 +328,149 @@ export default function CollagesWorkspace({ project, userId, existingSection, on
       </div>
 
       {readingItem && (
-        <div
-          onClick={() => setReadingItem(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            background: 'rgba(10,13,20,0.82)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '2rem',
-          }}
-        >
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: '#ffffff',
+          overflowY: 'auto',
+          fontFamily: '"Times New Roman", Times, serif',
+        }}>
+          {/* ── Toolbar ── */}
           <div
-            onClick={e => e.stopPropagation()}
+            id="keryx-reading-toolbar"
             style={{
-              background: 'var(--surface)',
-              border: `1px solid ${colorFor(readingItem.type)}`,
-              borderRadius: '10px',
-              padding: '2rem 2.2rem 2rem',
-              maxWidth: '680px',
-              width: '100%',
-              maxHeight: '82vh',
-              overflowY: 'auto',
-              position: 'relative',
+              position: 'sticky', top: 0, zIndex: 10,
+              background: '#f5f3ee',
+              borderBottom: '1px solid #ddd8d0',
+              padding: '0.5rem 2rem',
+              display: 'flex', alignItems: 'center', gap: '0.25rem',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '1.1rem' }}>
-              <span style={{ fontSize: '0.62rem', color: colorFor(readingItem.type), textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 900, paddingTop: '0.2rem' }}>
-                {itemTypeLabel(readingItem.type)}
-              </span>
+            <button
+              onClick={() => setReadingItem(null)}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#555', fontSize: '0.78rem', padding: '0.3rem 0.6rem', borderRadius: '4px', fontFamily: 'inherit' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#e8e4dc'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >← Voltar</button>
+
+            <div style={{ width: '1px', height: '14px', background: '#ddd', margin: '0 0.4rem' }} />
+
+            <span style={{ fontSize: '0.72rem', color: '#888', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {readingItem.title}
+            </span>
+
+            {[
+              { label: 'Editar', action: () => setReadingItem(null) },
+              { label: 'Imprimir', action: handlePrint },
+              { label: 'Gerar PDF', action: handlePrint },
+              { label: isFullscreen ? 'Sair da tela cheia' : 'Tela cheia', action: toggleFullscreen },
+            ].map(btn => (
               <button
-                onClick={() => setReadingItem(null)}
-                style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0 0.2rem' }}
-                onMouseEnter={e => e.currentTarget.style.color = 'var(--text-secondary)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
-              >×</button>
+                key={btn.label}
+                onClick={btn.action}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#555', fontSize: '0.76rem', padding: '0.3rem 0.65rem', borderRadius: '4px', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#e8e4dc'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >{btn.label}</button>
+            ))}
+          </div>
+
+          {/* ── Conteúdo ── */}
+          <div style={{ maxWidth: '850px', margin: '0 auto', padding: '3.5rem 3rem 8rem' }}>
+
+            {/* Tipo + categoria */}
+            <div style={{ fontSize: '0.68rem', color: '#999', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.75rem', fontFamily: 'system-ui, sans-serif' }}>
+              {itemTypeLabel(readingItem.type)}{readingItem.category ? ` · ${readingItem.category}` : ''}
             </div>
 
-            <h2 style={{ margin: '0 0 1.1rem', fontSize: '1.35rem', color: 'var(--text-primary)', lineHeight: 1.25, letterSpacing: 0 }}>
+            {/* Título */}
+            <h1 style={{ fontSize: '1.65rem', color: '#000000', lineHeight: 1.3, margin: '0 0 1.75rem', fontWeight: 700, fontFamily: '"Times New Roman", Times, serif', letterSpacing: 0 }}>
               {readingItem.title}
-            </h2>
+            </h1>
 
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontFamily: 'var(--font-serif)', fontSize: '1.05rem', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-              {readingItem.content}
-            </p>
-
-            {(readingItem.author || readingItem.work || readingItem.page) && (
-              <div style={{ marginTop: '1.4rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1.6 }}>
-                {readingItem.author && <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{readingItem.author}</span>}
-                {readingItem.work && <span> · {readingItem.work}</span>}
-                {readingItem.page && <span> · p. {readingItem.page}</span>}
+            {/* Cabeçalho bibliográfico */}
+            {(readingItem.author || readingItem.work || readingItem.page || readingItem.linkedTo) && (
+              <div style={{
+                marginBottom: '2.5rem',
+                paddingBottom: '1.5rem',
+                borderBottom: '1px solid #e0ddd8',
+                color: '#333',
+                fontSize: '12pt',
+                lineHeight: 1.6,
+              }}>
+                {readingItem.author && (
+                  <div style={{ fontWeight: 700, color: '#000' }}>{readingItem.author}</div>
+                )}
+                {readingItem.work && (
+                  <div style={{ fontStyle: 'italic', color: '#333' }}>{readingItem.work}</div>
+                )}
+                {readingItem.page && (
+                  <div style={{ color: '#555' }}>p. {readingItem.page}</div>
+                )}
+                {readingItem.linkedTo && (
+                  <div style={{ marginTop: '0.35rem', color: '#888', fontSize: '0.8rem', fontFamily: 'system-ui, sans-serif' }}>
+                    Vinculado a: {readingItem.linkedTo}
+                  </div>
+                )}
               </div>
             )}
 
-            {(readingItem.category || readingItem.tags.length > 0 || readingItem.linkedTo) && (
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.85rem' }}>
-                {readingItem.category && (
-                  <span style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: '5px', color: 'var(--text-muted)', fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}>
-                    {readingItem.category}
-                  </span>
-                )}
-                {readingItem.linkedTo && readingItem.linkedTo !== projectRef && (
-                  <span style={{ background: 'var(--surface-2)', border: `1px solid ${colorFor(readingItem.type)}`, borderRadius: '5px', color: colorFor(readingItem.type), fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}>
-                    {readingItem.linkedTo}
-                  </span>
-                )}
-                {readingItem.tags.map(tag => (
-                  <span key={tag} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: '5px', color: 'var(--text-muted)', fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}>
-                    #{tag}
-                  </span>
+            {/* Corpo — citação */}
+            {readingItem.type === 'citacao' ? (
+              <blockquote style={{
+                margin: '0 0 2.5rem',
+                padding: '1.25rem 1.75rem',
+                borderLeft: '3px solid #ccc',
+                background: '#faf9f6',
+                color: '#000000',
+                fontSize: '12pt',
+                lineHeight: 1.6,
+                fontStyle: 'italic',
+              }}>
+                {readingItem.content.split('\n\n').map((para, i) => (
+                  <p key={i} style={{ margin: i === 0 ? 0 : '1em 0 0' }}>
+                    {para.split('\n').map((line, j) => (
+                      <span key={j}>{j > 0 && <br />}{line}</span>
+                    ))}
+                  </p>
+                ))}
+              </blockquote>
+            ) : (
+              /* Corpo — demais tipos */
+              <div style={{ color: '#000000', fontSize: '12pt', lineHeight: 1.6, marginBottom: '2.5rem' }}>
+                {readingItem.content.split('\n\n').map((para, i) => (
+                  <p key={i} style={{ margin: i === 0 ? 0 : '1.1em 0 0', textIndent: i > 0 ? '1.5em' : 0 }}>
+                    {para.split('\n').map((line, j) => (
+                      <span key={j}>{j > 0 && <br />}{line}</span>
+                    ))}
+                  </p>
                 ))}
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '0.55rem', marginTop: '1.2rem', flexWrap: 'wrap' }}>
+            {/* Tags */}
+            {readingItem.tags.length > 0 && (
+              <div style={{ marginTop: '2.5rem', paddingTop: '1.25rem', borderTop: '1px solid #e0ddd8' }}>
+                <div style={{ fontSize: '0.66rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.5rem', fontFamily: 'system-ui, sans-serif' }}>
+                  Palavras-chave
+                </div>
+                <div style={{ fontSize: '0.88rem', color: '#555', fontFamily: 'system-ui, sans-serif', lineHeight: 1.8 }}>
+                  {readingItem.tags.join('  ·  ')}
+                </div>
+              </div>
+            )}
+
+            {/* Ações IA */}
+            <div style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid #e0ddd8', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontFamily: 'system-ui, sans-serif' }}>
               <button
                 onClick={() => { askAI('Relacione esta colagem com a passagem atual, indicando conexões exegéticas, teológicas e homiléticas.', readingItem); setReadingItem(null) }}
-                style={{ background: 'transparent', border: `1px solid ${colorFor(readingItem.type)}`, color: colorFor(readingItem.type), borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.76rem', fontWeight: 800, padding: '0.38rem 0.65rem' }}
+                style={{ background: 'transparent', border: `1px solid ${colorFor(readingItem.type)}`, color: colorFor(readingItem.type), borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.76rem', fontWeight: 700, padding: '0.4rem 0.85rem' }}
               >
                 Relacionar com IA
               </button>
               <button
                 onClick={() => { askAI('Sugira tags, categoria, vínculos e possíveis agrupamentos para esta colagem.', readingItem); setReadingItem(null) }}
-                style={{ background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.76rem', padding: '0.38rem 0.65rem' }}
+                style={{ background: 'transparent', border: '1px solid #ccc', color: '#666', borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.76rem', padding: '0.4rem 0.85rem' }}
               >
                 Organizar
               </button>

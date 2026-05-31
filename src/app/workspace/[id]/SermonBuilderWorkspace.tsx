@@ -1064,6 +1064,103 @@ export default function SermonBuilderWorkspace({
     setRenamingId(null)
   }
 
+  function printSermon() {
+    const ref = `${project.book} ${project.passage_ref}`
+    const title = project.title || `Sermão — ${ref}`
+    const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    const para = (s: string) => s.split('\n\n').map((p, i) =>
+      `<p style="margin:${i>0?'0.9em':0} 0 0;text-indent:${i>0?'1.5em':'0'}">${esc(p).split('\n').join('<br>')}</p>`
+    ).join('')
+
+    const pages: string[] = []
+
+    // Cover page
+    pages.push(`
+      <div class="page cover">
+        <div class="cover-ref">${esc(ref)}</div>
+        <h1 class="cover-title">${esc(title)}</h1>
+        <div class="cover-line"></div>
+      </div>`)
+
+    let pontoIdx = 0
+
+    for (const block of blocks) {
+      if (block.type === 'desenvolvimento' && block.pontos && block.pontos.length > 0) {
+        for (const ponto of block.pontos) {
+          pontoIdx++
+          const roman = toRoman(pontoIdx)
+          const subs = ponto.subpontos.filter(s => s.text.trim())
+          pages.push(`
+            <div class="page">
+              <div class="page-header">${esc(ref)}</div>
+              <h2>${roman}. ${esc(ponto.text)}</h2>
+              ${subs.length > 0 ? `
+                <ol class="subpontos">
+                  ${subs.map(s => `
+                    <li>
+                      ${esc(s.text)}
+                      ${s.notes?.trim() ? `<div class="note">${esc(s.notes)}</div>` : ''}
+                    </li>`).join('')}
+                </ol>` : ''}
+              ${ponto.ilustracao.trim() ? `
+                <div class="section-label">Ilustração</div>
+                <blockquote class="ilustracao">${para(ponto.ilustracao)}</blockquote>` : ''}
+              ${ponto.aplicacao.trim() ? `
+                <div class="section-label">Aplicação</div>
+                <div class="aplicacao">${para(ponto.aplicacao)}</div>` : ''}
+            </div>`)
+        }
+      } else if (block.content.trim()) {
+        pages.push(`
+          <div class="page">
+            <div class="page-header">${esc(ref)}</div>
+            <h2>${esc(block.title)}</h2>
+            <div class="content">${para(block.content)}</div>
+          </div>`)
+      }
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>${esc(title)}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Times New Roman", Times, serif; font-size: 12pt; color: #000; background: #fff; line-height: 1.6; }
+  .page { padding: 2.8cm 3.2cm 2.8cm; min-height: 100vh; display: flex; flex-direction: column; page-break-after: always; break-after: page; }
+  .page:last-child { page-break-after: avoid; break-after: avoid; }
+  .cover { justify-content: center; align-items: center; text-align: center; }
+  .cover-ref { font-family: system-ui, sans-serif; font-size: 10pt; color: #888; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.5rem; }
+  .cover-title { font-size: 22pt; font-weight: bold; line-height: 1.25; max-width: 520px; margin-bottom: 1.5rem; }
+  .cover-line { width: 60px; height: 2px; background: #000; }
+  .page-header { font-family: system-ui, sans-serif; font-size: 8.5pt; color: #aaa; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 0.45rem; margin-bottom: 1.8rem; }
+  h2 { font-size: 14pt; font-weight: bold; margin-bottom: 1.4rem; line-height: 1.3; }
+  .content p { margin-bottom: 0; }
+  ol.subpontos { padding-left: 1.6em; margin-bottom: 1.4rem; }
+  ol.subpontos li { margin-bottom: 0.55em; }
+  .note { margin: 0.25em 0 0.5em 0.2em; font-size: 10pt; color: #444; border-left: 2px solid #ccc; padding-left: 0.7em; font-style: italic; white-space: pre-line; }
+  .section-label { font-family: system-ui, sans-serif; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: #777; margin: 1.4rem 0 0.5rem; }
+  .ilustracao { border-left: 3px solid #bbb; padding: 0.7rem 1rem; margin-bottom: 1.2rem; font-style: italic; background: #fafaf8; }
+  .aplicacao { margin-bottom: 1rem; }
+  @media print {
+    .page { min-height: auto; padding: 0; }
+    .page-header, .cover-ref { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>${pages.join('\n')}</body>
+</html>`
+
+    const win = window.open('', '_blank', 'width=900,height=700')
+    if (win) {
+      win.document.write(html)
+      win.document.close()
+      win.focus()
+      setTimeout(() => win.print(), 600)
+    }
+  }
+
   const savedLabel = saving ? 'salvando…'
     : savedAt ? `salvo ${savedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''
 
@@ -1093,19 +1190,28 @@ export default function SermonBuilderWorkspace({
                 }
               }}
               style={{
-                background: 'transparent',
-                border: '1px solid var(--border)',
-                borderRadius: '5px',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: '0.72rem',
-                padding: '0.2rem 0.6rem',
+                background: 'transparent', border: '1px solid var(--border)', borderRadius: '5px',
+                color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: '0.72rem', padding: '0.2rem 0.6rem',
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ai)'; e.currentTarget.style.color = 'var(--ai)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
             >
               ↓ Carregar esboço Gn 39
+            </button>
+          )}
+          {blocks.some(b => blockHasContent(b)) && (
+            <button
+              onClick={printSermon}
+              style={{
+                background: 'transparent', border: '1px solid var(--border)', borderRadius: '5px',
+                color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: '0.72rem', padding: '0.2rem 0.6rem',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text-secondary)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+            >
+              ⎙ Imprimir / PDF
             </button>
           )}
         </div>

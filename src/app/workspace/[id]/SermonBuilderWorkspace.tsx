@@ -93,6 +93,141 @@ const DEFAULT_BLOCKS: SermonBlock[] = [
   { id: 'b3', type: 'conclusao',       title: 'Conclusão',       content: '' },
 ]
 
+// ── Preset: A Presença de Deus em Todas as Circunstâncias — Gn 39.1-23 ────
+
+const PRESET_GN39: SermonBlock[] = [
+  {
+    id: mkId(), type: 'introducao', title: 'Introdução',
+    content: `ABERTURA: O tema central do capítulo 39 é a presença de Deus.
+A expressão "Deus estava com..." aparece 4x (vv. 2, 3, 21, 23)
+
+A PERCEPÇÃO EQUIVOCADA DA PRESENÇA DE DEUS GERA CONSEQUÊNCIAS:
+• Instabilidade emocional: medo, culpa ou vergonha
+• Coragem para praticar o erro
+• Autossuficiência: casamento, educação dos filhos e no trabalho
+
+TRANSIÇÃO: Deus está presente em todas as circunstâncias`,
+  },
+  {
+    id: mkId(), type: 'transicao', title: 'Contextualização',
+    content: `O texto começa dizendo que José foi LEVADO para o Egito.
+
+Personagens:
+• José — jovem sonhador, amado do pai
+• Potifar — oficial de Faraó, comandante da guarda, egípcio (v. 1)
+
+Ambiente: Egito — centro do poder econômico mundial; distante da família
+
+Enredo:
+• José traído pelos irmãos → poço → escravo dos ismaelitas
+• Agora escravo de Potifar, desce ao Egito
+
+PROPOSIÇÃO: A presença de Deus não depende das circunstâncias. Deus as governa.`,
+  },
+  {
+    id: mkId(), type: 'desenvolvimento', title: 'Desenvolvimento', content: '',
+    pontos: [
+      {
+        id: mkId(),
+        text: 'DEUS ESTÁ PRESENTE NA PROSPERIDADE (v. 1-6a)',
+        notes: '',
+        subpontos: [
+          {
+            id: mkId(),
+            text: 'Na Bíblia, prosperidade não é ausência de sofrimento — é o sucesso na missão de Deus',
+            notes: 'Não é status. Não é riqueza. Derek Kidner: "é a palavra usada para o êxito da missão de Eliézer em 24:21,40, e para o sofrimento do Servo em Isaías 53:10; ela fala de realização e cumprimento, e não de status."',
+          },
+          {
+            id: mkId(),
+            text: 'Padrão quíntuplo (cf. Gn 12): Presença → Prosperidade → Testemunho externo → Favor → Bênção ao entorno (vv. 2-5)',
+            notes: 'v.2a Presença: "O SENHOR estava com José"\nv.2b Prosperidade: tsalach — Hifil causativo, o SENHOR é o agente, não José\nv.3 Testemunho externo: "seu senhor viu que o SENHOR era com ele"\nv.4 Favor/Promoção: "José achou graça... o constituiu sobre a sua casa"\nv.5 Bênção ao entorno: "o SENHOR abençoou a casa do egípcio por causa de José"',
+          },
+          {
+            id: mkId(),
+            text: 'Sidney Greidanus: "Aqui o nome Yahweh aparece no mais incerto momento da vida de José. Está mesmo sozinho?"',
+            notes: '',
+          },
+        ],
+        ilustracao: 'O crente é como árvore frutífera. O justo que medita na lei do Senhor "é como árvore plantada junto a uma corrente de águas, que, no devido tempo, dá o seu fruto, e cuja folhagem não murcha; e tudo o que ele faz será bem-sucedido." (Sl 1.3). Assim como a árvore é alimentada pela corrente de águas, o crente é alimentado por Deus.',
+        ilustracaoNotes: 'tsalach em Sl 1.3 = mesmo termo de Gn 39.2,3,23. José é o Salmo 1 em carne e osso.',
+        aplicacao: 'Assim como Deus fez com José, Ele nos faz mordomos: do conhecimento, da família, dos filhos, do trabalho, da empresa. Tudo pertence ao Senhor. São ferramentas para o avanço do Reino, para a proclamação do Evangelho, para que os outros possam ver que Deus está conosco.',
+        aplicacaoNotes: '',
+      },
+      {
+        id: mkId(),
+        text: 'DEUS ESTÁ PRESENTE NA FALSIDADE (v. 6b-18)',
+        notes: 'O QUE É FALSIDADE? Falsidade é a distorção da verdade — fabricar evidências, construir aparências, fazer o inocente parecer culpado. Toda falsidade é uma tentativa de substituir a verdade de Deus por uma narrativa humana. Origem: Éden, a serpente distorcendo a verdade.',
+        subpontos: [
+          {
+            id: mkId(),
+            text: 'A esposa de Potifar cometeu falsidade: assediou insistentemente (vv. 7,10), fabricou evidências, construiu narrativa com prova falsa (vv. 13-18)',
+            notes: 'Pseudomarturia: testemunho forjado com evidência física. A roupa de José transformada em "prova". A virtude dele (a fuga) invertida em evidência do crime que não cometeu.',
+          },
+          {
+            id: mkId(),
+            text: 'José sofreu as consequências: era inocente, fugiu do pecado, mas foi condenado à prisão — a falsidade destrói reputações, confiança, relacionamentos',
+            notes: 'Paralelo tipológico: Mt 26.59-60 — Jesus condenado pelo mesmo padrão de pseudomarturia. O inocente condenado pela forma do testemunho, não pela substância da verdade.',
+          },
+          {
+            id: mkId(),
+            text: 'Deus presente na resposta de José: lealdade, gratidão, temor ao Senhor — "Como pecaria contra Deus?" (v. 9b)',
+            notes: 'Não foi para não perder posição. Não foi para sustentar reputação. Não foi para manter privilégios. A única razão foi o amor a Deus.\nBruce Waltke & Cathi Fredericks, Gênesis, p. 645.',
+          },
+        ],
+        ilustracao: '',
+        ilustracaoNotes: '',
+        aplicacao: `FALSIDADE SOFRIDA — É fácil conectar-se com José:
+• Uma demissão injusta; uma traição sofrida
+• Não temos como controlar a falsidade do outro — José não controlou
+• Não precisamos provar o contrário a todo custo — a verdade não depende da nossa defesa
+• Confie no justo Juiz: "A mim me pertence a vingança; eu recompensarei, diz o Senhor" (Rm 12.19)
+• Deus estava presente com José na falsidade — está presente conosco também
+
+FALSIDADE COMETIDA — Difícil é perceber nossa falsidade:
+• Agimos falsamente quando julgamos pela aparência — construindo histórias a partir do que desejamos
+• Agimos falsamente quando produzimos provas — literais ou abstratas — para fazer o inocente parecer culpado
+• A falsidade nasce da inveja, da cobiça e da obsessão — desejos contrariados que se tornam destruição (Tg 1.15)
+• Princípio: provas devem ser evidências, não construções`,
+        aplicacaoNotes: '',
+      },
+      {
+        id: mkId(),
+        text: 'DEUS ESTÁ PRESENTE NA ADVERSIDADE (v. 19-23)',
+        notes: '',
+        subpontos: [
+          {
+            id: mkId(),
+            text: 'As adversidades são inevitáveis — do latim adversus: "virado contra você" — pessoas, circunstâncias, sistemas, acusações (cf. Catecismo, pergunta 20)',
+            notes: 'adversitas = ad + vertere = virado contra. Problema, luta, doença, desemprego, injustiça, prisão. O adversário é o que está posicionado de frente para impedir o avanço.',
+          },
+          {
+            id: mkId(),
+            text: 'O mesmo padrão quíntuplo se repete na prisão: Presença → Hesed → Favor → Promoção → tsalach (vv. 21-23)',
+            notes: 'v.21a Presença: "O SENHOR era com José"\nv.21b Hesed: "lhe mostrou misericórdia" = estendeu hesed — fidelidade aliancial dentro da prisão\nv.21c Favor do carcereiro\nv.22 Promoção: todos os presos confiados a José\nv.23 tsalach: "Tudo o que ele fazia, o SENHOR prosperava"',
+          },
+          {
+            id: mkId(),
+            text: 'As adversidades revelam o nosso Deus — José foi íntegro na casa de Potifar e na CASA da prisão (beit hassohar)',
+            notes: 'beit hassohar = casa da prisão. Não um buraco — uma estrutura. E dentro dessa casa o SENHOR estava: transformando a casa da prisão em casa da presença.',
+          },
+        ],
+        ilustracao: '',
+        ilustracaoNotes: '',
+        aplicacao: 'Deus exaltou José da prisão ao palácio — e esse padrão encontra seu cumprimento em Cristo, exaltado da cruz ao trono.',
+        aplicacaoNotes: '',
+      },
+    ],
+  },
+  {
+    id: mkId(), type: 'conclusao', title: 'Conclusão',
+    content: `Conexão cristológica: José acusado injustamente, preso sendo inocente, eventualmente exaltado — aponta para Cristo. O mais inocente foi o mais condenado. A presença de Deus não o livrou da cruz — o sustentou através dela e o exaltou.
+
+Aquele que esteve com José na escravidão, na falsidade e na prisão — veio Ele mesmo ao cativeiro, sofreu Ele mesmo a falsidade, desceu Ele mesmo à morte — para que sua presença conosco fosse eterna.
+
+"Emanuel — Deus conosco." (Mt 1.23)`,
+  },
+]
+
 function blockHasContent(block: SermonBlock): boolean {
   if (block.type === 'desenvolvimento') {
     return (block.pontos ?? []).some(p =>
@@ -946,8 +1081,33 @@ export default function SermonBuilderWorkspace({
         <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.65, maxWidth: '600px' }}>
           Organize o sermão em blocos modulares. Passe o cursor sobre qualquer elemento para ver as ações disponíveis.
         </p>
-        <div style={{ marginTop: '0.65rem', fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-          {project.book} {project.passage_ref} · {savedLabel}
+        <div style={{ marginTop: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            {project.book} {project.passage_ref} · {savedLabel}
+          </span>
+          {blocks.every(b => !blockHasContent(b)) && (
+            <button
+              onClick={() => {
+                if (window.confirm('Carregar esboço "A Presença de Deus em Todas as Circunstâncias" (Gn 39.1-23)? O conteúdo atual será substituído.')) {
+                  scheduleSave(PRESET_GN39)
+                }
+              }}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--border)',
+                borderRadius: '5px',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: '0.72rem',
+                padding: '0.2rem 0.6rem',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ai)'; e.currentTarget.style.color = 'var(--ai)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+            >
+              ↓ Carregar esboço Gn 39
+            </button>
+          )}
         </div>
       </div>
 
